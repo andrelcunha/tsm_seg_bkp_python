@@ -4,6 +4,7 @@ import os
 import _thread
 import time
 import tempfile
+import errno
 
 
 class BkpNasSeg:
@@ -23,21 +24,33 @@ class BkpNasSeg:
     DATE = time.strftime("%d%m%y-%H%M%S")
     TSMSCHEDLOG = TSM_DIR + "/logs/dsmsched-" + NODENAME + ".log"
     TSMERRORLOG = TSM_DIR + "/logs/dsmerror-" + NODENAME + ".log"
-    
-    def __int__(self):
-        if os.path.isfile(self.FILENODE):
-            self.createfile(self.FILENODE)
+
+    def __init__(self):
+        self.make_sure_path_exists(self.TXT_DIR)
+        self.make_sure_file_exists(self.FILENODE)
+        print(self.FILENODE)
         return None
 
     @staticmethod
-    def createfile(file_name):
-        fn = open(file_name, mode="a+")
-        fn.close()
+    def make_sure_path_exists(path):
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+        return None
+
+    @staticmethod
+    def make_sure_file_exists(file_name):
+        if os.path.isfile(file_name):
+            fn = open(file_name, mode="w")
+            fn.write('1')
+            fn.close()
         return None
 
     @staticmethod
     def writeonfile(file_name, message):
-        my_file = open(file_name, mode="w")
+        my_file = open(file_name, mode="a+")
         my_file.write(message)
         my_file.close()
         return None
@@ -189,5 +202,5 @@ def main(self):
     return None
 
 if __name__ == "__main__":
-    bkp = BkpNasSeg
+    bkp = BkpNasSeg()
     main(bkp)
