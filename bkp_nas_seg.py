@@ -26,17 +26,22 @@ class BkpNasSeg:
     TMP_DIR = "/tmp/tsm_seg_bkp/"
     DSMC = "/usr/bin/dsmc"
     TXT_DIR = TSM_DIR + "/TXT"
-    NOMEDIR = BASE_DIR.replace("/", "")
-    FILENODE = TXT_DIR + "/" + NODENAME + "-" + NOMEDIR + ".txt"
-    DATE = time.strftime("%d%m%y-%H%M%S")
-    TSMSCHEDLOG = TSM_DIR + "/logs/dsmsched-" + NODENAME + ".log"
-    TSMERRORLOG = TSM_DIR + "/logs/dsmerror-" + NODENAME + ".log"
+    NOMEDIR = ""
+    FILENODE = ""
+    TSMSCHEDLOG = ""
+    TSMERRORLOG = ""
     PID_CONTROL = []
+    DATE = time.strftime("%d%m%y-%H%M%S")
 
     def __init__(self):
+        self.set_configuration(self.get_configuration())
         self.make_sure_path_exists(self.TXT_DIR)
         self.make_sure_file_exists(self.FILENODE)
-        print(self.FILENODE)
+        self.NOMEDIR = self.BASE_DIR.replace("/", "")
+        self.FILENODE = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + ".txt"
+        self.TSMSCHEDLOG = self.TSM_DIR + "/logs/dsmsched-" + self.NODENAME + ".log"
+        self.TSMERRORLOG = self.TSM_DIR + "/logs/dsmerror-" + self.NODENAME + ".log"
+        self.PID_CONTROL = []
 
     @staticmethod
     def get_configuration():
@@ -44,14 +49,19 @@ class BkpNasSeg:
         Get configuration from config file
         :return: json
         """
-        with open('strings.json') as json_data:
+        with open('config.json') as json_data:
             config = json.load(json_data)
-        return config[0]
+        return config
 
-    def set_configuration(self,config):
+    def set_configuration(self, config):
+        """
+        Set configuration values to their attributes.
+        :param config: json
+        :return:
+        """
         for attrib in dir(self):
             if config.__contains__(attrib):
-                setattr(self, attrib, json[attrib])
+                setattr(self, attrib, config[attrib])
 
     @staticmethod
     def make_sure_path_exists(path):
@@ -129,19 +139,18 @@ class BkpNasSeg:
         :return None
         """
         for level in range(1, 5):
-            if level == self.LEVELS:
+            if self.LEVELS.__eq__(level):
                 file_level = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-NIVEL" + str(level) + ".txt"
                 aux = "*/"
                 cmd = "ls -1 -d " + self.BASE_DIR + "/"
                 cmd += level * aux
                 cmd += " > " + file_level
-                os.system(cmd)
-                # cmd content reset after execution
+                os.system(cmd)                  # cmd content reset after execution
                 cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
                 os.system(cmd)
                 cmd = "rm -f " + file_level
                 os.system(cmd)
-            elif self.LEVELS > level:
+            elif self.LEVELS.__gt__(level):
                 file_level = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-NIVEL" + str(level) + ".txt"
                 aux = "*/"
                 cmd = "ls -1 -d " + self.BASE_DIR + "/"
@@ -199,38 +208,18 @@ class BkpNasSeg:
             print("{0} - {1}: {2}".format(threadname, count, tmp))
         return None
 
-    '''
-       #Função dsmcdecrementa - Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de
-        diretórios. 
-       #Depois exclui estas linhas da lista de diretórios, e decrementa a várial de contabilização do número de linhas 
-       ($LINHAS).
-
-
-       `sed "$PROCS"q $TXT_DIR/$NODENAME-$NOMEDIR.txt > $TXT_DIR/$NODENAME-$NOMEDIR-CICLO.txt`
-           while [ `cat $TXT_DIR/$NODENAME-$NOMEDIR-CICLO.txt | wc -l` -gt 0 ]
-               do
-               DIR=`sed 1q $TXT_DIR/$NODENAME-$NOMEDIR-CICLO.txt`
-               $DSMC i -se=$NODENAME $DIR 1>> $TSM_DIR/logs/dsmsched-$NODENAME.log 2>> $TSM_DIR/logs/dsmerror-$NODENAME.
-               log
-               `sed 1d $TXT_DIR/$NODENAME-$NOMEDIR-CICLO.txt > $TXT_DIR/$NODENAME-$NOMEDIR-CICLO-TEMP.txt`
-               `mv $TXT_DIR/$NODENAME-$NOMEDIR-CICLO-TEMP.txt $TXT_DIR/$NODENAME-$NOMEDIR-CICLO.txt`
-               done
-       `sed "1,"$PROCS"d" $TXT_DIR/$NODENAME-$NOMEDIR.txt > $TXT_DIR/$NODENAME-$NOMEDIR-DECREM.txt`
-       `mv $TXT_DIR/$NODENAME-$NOMEDIR-DECREM.txt $TXT_DIR/$NODENAME-$NOMEDIR.txt`
-
-       '''
-
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
         Depois exclui estas linhas da lista de diretórios, e decrementa a várial de contabilização do número de linhas
         ($LINHAS).
         """
-        file_node_ciclo = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-CICLO"
+        file_node_ciclo = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-CICLO-"+self.DATE
         file_node_ciclo += ".txt"
-        self.writeonfile(file_node_ciclo, self.pop_out_n_lines(self.FILENODE, self.PROCS));
+        self.writeonfile(file_node_ciclo, self.pop_out_n_lines(self.FILENODE, self.PROCS))
         while self.file_len(file_node_ciclo) > 0:
-            dir_target = self.pop_out_n_lines(file_node_ciclo, 1).rstrip('\n')
+            tmp = self.pop_out_n_lines(file_node_ciclo, 1)
+            dir_target = tmp[:tmp.find('\n')]
             self.executabkp(dir_target, self.TSMSCHEDLOG, self.TSMERRORLOG)
         return None
 
@@ -241,10 +230,25 @@ class BkpNasSeg:
         :param file_out: File that receives the output of command
         :param file_err: File that receives the errors of command
         """
-        param_sub, param_target = target.split(' ', 1)
+        param_sub = ""
+        param_target = ""
+        try:
+            # separa param '-sub=yes' do caminho alvo
+            param_sub, param_target = target.split(' ', 1)
+        except ValueError:
+            print("Error: not enough values to unpack")
+            print(target)
+            exit(-1)
         cmd = [self.DSMC, "i",  "-quiet", "-se=" + self.NODENAME, param_sub, param_target]
+        print(cmd)
+        secs = 1
+        while self.PID_CONTROL.__len__().__gt__(30):
+            time.sleep(secs)
+            secs *= 2
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.PID_CONTROL.append(proc.pid)
+        outs = ""
+        errs = ""
         try:
             outs, errs = proc.communicate(timeout=15)
         except subprocess.TimeoutExpired:
@@ -253,6 +257,11 @@ class BkpNasSeg:
         finally:
             self.writeonfilebytes(file_out, outs)
             self.writeonfilebytes(file_err, errs)
+            flag_done = False
+            while not flag_done:
+                flag_done = proc.poll().__ne__(None)    # if proc hasn't terminet yet, it returns None.
+                if flag_done:                           # flag_done is true if
+                    self.PID_CONTROL.remove(proc.pid)
         return None
 
     @staticmethod
@@ -279,12 +288,6 @@ class BkpNasSeg:
         tmp_file.close()
         return fst_lines
 
-'''
-    def pid_control(self):
-        for pid in self.PID_CONTROL:
-            proc = new subprocess.
-            # if 
-'''
 
 def main():
     """
@@ -297,25 +300,24 @@ def main():
         exit(-1)
     bkp.generatetextfile()
     linhas = bkp.file_len(bkp.FILENODE)
-    # Fazer thread para controlar os pids.
-    while linhas > 0:
-        try:
-            _thread.start_new_thread(bkp.dsmcdecrementa, ())
-        except RuntimeError:
-            print("Error: unable to start thread")
-        finally:
-            linhas = bkp.file_len(bkp.FILENODE)
-            time.sleep(10)
-    return None
+    print(linhas)
+    threads = 0
+    # enquanto tiver arquivos a serem copiados
+    while linhas.__gt__(0):
+        # ate 10 threads
+        if bkp.PID_CONTROL.__len__().__lt__(10):
+            try:
+                _thread.start_new_thread(bkp.dsmcdecrementa, ())
+                threads += 1
+            except RuntimeError:
+                print("Error: unable to start thread")
+            finally:
+                linhas = bkp.file_len(bkp.FILENODE)
+                print("thread " + str(threads))
+                print(linhas)
+                time.sleep(5)
+    return 0
 
-
-def testa_setup():
-    bkp = BkpNasSeg()
-    my_json = bkp.get_configuration()
-    bkp.set_configuration(my_json)
-    print(bkp.TSM_DIR)
 
 if __name__ == "__main__":
-    # main()
-    testa_setup()
-
+    main()
