@@ -10,27 +10,24 @@ import time
 import tempfile
 import errno
 import subprocess
+import json
 
 
 class BkpNasSeg:
     """
     Executes a segmented backup from target path, setup in BASE_DIR attribute.
     """
-    PROCS = 30
-    LEVELS = 3
-    LEVEL_THRESHOULD = 5
-#    BASE_DIR = "/clientes/SEED"
-#    BASE_DIR = "/Users/deko"
-    BASE_DIR = "/home"
-    NODENAME = "TESTE_CUNHA"
-    NOMEDIR = BASE_DIR.replace("/", "")
-#    TSM_DIR = "/usr/tivoli/tsm/client/ba/bin64"
-#    TSM_DIR = "/tmp/TSM"
+    PROCS = 0
+    LEVELS = 0
+    LEVEL_THRESHOULD = 0
+    BASE_DIR = ""
+    NODENAME = ""
     TSM_DIR = "/opt/tivoli/tsm/client/ba/bin"
-    TXT_DIR = TSM_DIR + "/TXT"
-    FILENODE = TXT_DIR + "/" + NODENAME + "-" + NOMEDIR + ".txt"
     TMP_DIR = "/tmp/tsm_seg_bkp/"
     DSMC = "/usr/bin/dsmc"
+    TXT_DIR = TSM_DIR + "/TXT"
+    NOMEDIR = BASE_DIR.replace("/", "")
+    FILENODE = TXT_DIR + "/" + NODENAME + "-" + NOMEDIR + ".txt"
     DATE = time.strftime("%d%m%y-%H%M%S")
     TSMSCHEDLOG = TSM_DIR + "/logs/dsmsched-" + NODENAME + ".log"
     TSMERRORLOG = TSM_DIR + "/logs/dsmerror-" + NODENAME + ".log"
@@ -40,6 +37,21 @@ class BkpNasSeg:
         self.make_sure_path_exists(self.TXT_DIR)
         self.make_sure_file_exists(self.FILENODE)
         print(self.FILENODE)
+
+    @staticmethod
+    def get_configuration():
+        """
+        Get configuration from config file
+        :return: json
+        """
+        with open('strings.json') as json_data:
+            config = json.load(json_data)
+        return config[0]
+
+    def set_configuration(self,config):
+        for attrib in dir(self):
+            if config.__contains__(attrib):
+                setattr(self, attrib, json[attrib])
 
     @staticmethod
     def make_sure_path_exists(path):
@@ -229,7 +241,6 @@ class BkpNasSeg:
         :param file_out: File that receives the output of command
         :param file_err: File that receives the errors of command
         """
-        from subprocess import PIPE, Popen
         param_sub, param_target = target.split(' ', 1)
         cmd = [self.DSMC, "i",  "-quiet", "-se=" + self.NODENAME, param_sub, param_target]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -297,6 +308,14 @@ def main():
             time.sleep(10)
     return None
 
+
+def testa_setup():
+    bkp = BkpNasSeg()
+    my_json = bkp.get_configuration()
+    bkp.set_configuration(my_json)
+    print(bkp.TSM_DIR)
+
 if __name__ == "__main__":
-    main()
+    # main()
+    testa_setup()
 
