@@ -4,13 +4,13 @@
 Executes a segmented backup from target path, setup in BASE_DIR attribute.
 """
 
-import os
 import _thread
-import time
-import tempfile
 import errno
-import subprocess
 import json
+import os
+import subprocess
+import tempfile
+import time
 
 
 class BkpNasSeg:
@@ -22,26 +22,31 @@ class BkpNasSeg:
     LEVEL_THRESHOULD = 0
     BASE_DIR = ""
     NODENAME = ""
-    TSM_DIR = "/opt/tivoli/tsm/client/ba/bin"
-    TMP_DIR = "/tmp/tsm_seg_bkp/"
-    DSMC = "/usr/bin/dsmc"
-    TXT_DIR = TSM_DIR + "/TXT"
+    TSM_DIR = ""
+    TMP_DIR = ""
+    DSMC = ""
+    TXT_DIR = ""
     NOMEDIR = ""
     FILENODE = ""
     TSMSCHEDLOG = ""
     TSMERRORLOG = ""
     PID_CONTROL = []
     DATE = time.strftime("%d%m%y-%H%M%S")
+    debug = True
 
     def __init__(self):
         self.set_configuration(self.get_configuration())
-        self.make_sure_path_exists(self.TXT_DIR)
-        self.make_sure_file_exists(self.FILENODE)
         self.NOMEDIR = self.BASE_DIR.replace("/", "")
+        self.TXT_DIR = self.TSM_DIR + "/TXT"
         self.FILENODE = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + ".txt"
         self.TSMSCHEDLOG = self.TSM_DIR + "/logs/dsmsched-" + self.NODENAME + ".log"
         self.TSMERRORLOG = self.TSM_DIR + "/logs/dsmerror-" + self.NODENAME + ".log"
         self.PID_CONTROL = []
+        self.make_sure_path_exists(self.TXT_DIR)
+        self.make_sure_file_exists(self.FILENODE)
+        if self.debug:
+            for attrib in dir(self):
+                print("{0}: {1}".format(attrib, getattr(self, attrib)))
 
     @staticmethod
     def get_configuration():
@@ -49,7 +54,9 @@ class BkpNasSeg:
         Get configuration from config file
         :return: json
         """
-        with open('config.json') as json_data:
+        cwd = os.path.realpath(__file__)
+        cwd = cwd[:cwd.find(os.path.basename(__file__))]
+        with open(cwd + '/config.json') as json_data:
             config = json.load(json_data)
         return config
 
@@ -257,11 +264,18 @@ class BkpNasSeg:
         finally:
             self.writeonfilebytes(file_out, outs)
             self.writeonfilebytes(file_err, errs)
-            flag_done = False
-            while not flag_done:
-                flag_done = proc.poll().__ne__(None)    # if proc hasn't terminet yet, it returns None.
-                if flag_done:                           # flag_done is true if
-                    self.PID_CONTROL.remove(proc.pid)
+            proc.wait()
+            """
+            proc_count = 0
+            while proc.poll() is None:
+                # flag_done = proc.poll().__ne__(None)    # if proc hasn't terminet yet, it returns None.
+                # flag_done is true if
+                proc_count += 1
+                print("proc {0} is running. \'While\' ran {1} times.\n ".format(proc.pid, proc_count))
+                """
+            if proc.poll() is not None:
+                print("PID {0} done.".format(proc.pid))
+                self.PID_CONTROL.remove(proc.pid)
         return None
 
     @staticmethod
@@ -303,7 +317,8 @@ def main():
     print(linhas)
     threads = 0
     # enquanto tiver arquivos a serem copiados
-    while linhas.__gt__(0):
+    flag_execute = True
+    while flag_execute:
         # ate 10 threads
         if bkp.PID_CONTROL.__len__().__lt__(10):
             try:
@@ -315,7 +330,11 @@ def main():
                 linhas = bkp.file_len(bkp.FILENODE)
                 print("thread " + str(threads))
                 print(linhas)
-                time.sleep(5)
+                time.sleep(0.1)
+                for pid in bkp.PID_CONTROL:
+                    print(str(pid))
+                print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
+        flag_execute = bkp.PID_CONTROL.__len__().__gt__(0)
     return 0
 
 
