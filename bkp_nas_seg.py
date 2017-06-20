@@ -146,18 +146,7 @@ class BkpNasSeg:
         :return None
         """
         for level in range(1, 5):
-            if self.LEVELS.__eq__(level):
-                file_level = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-NIVEL" + str(level) + ".txt"
-                aux = "*/"
-                cmd = "ls -1 -d " + self.BASE_DIR + "/"
-                cmd += level * aux
-                cmd += " > " + file_level
-                os.system(cmd)                  # cmd content reset after execution
-                cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
-                os.system(cmd)
-                cmd = "rm -f " + file_level
-                os.system(cmd)
-            elif self.LEVELS.__gt__(level):
+            if level.__lt__(self.LEVELS):
                 file_level = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-NIVEL" + str(level) + ".txt"
                 aux = "*/"
                 cmd = "ls -1 -d " + self.BASE_DIR + "/"
@@ -166,6 +155,17 @@ class BkpNasSeg:
                 os.system(cmd)
                 # cmd content reset after execution
                 cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
+                os.system(cmd)
+                cmd = "rm -f " + file_level
+                os.system(cmd)
+            if level.__eq__(self.LEVELS):
+                file_level = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-NIVEL" + str(level) + ".txt"
+                aux = "*/"
+                cmd = "ls -1 -d " + self.BASE_DIR + "/"
+                cmd += level * aux
+                cmd += " > " + file_level
+                os.system(cmd)  # cmd content reset after execution
+                cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
                 os.system(cmd)
                 cmd = "rm -f " + file_level
                 os.system(cmd)

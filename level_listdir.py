@@ -16,16 +16,22 @@ class LevelListDir:
     PARENT_DIR = []
     LEVEL = 0
 
-    def __init__(self, path, level):
-        self.get_path(path, level)
+    def __int__(self, parent_dir, level):
+        self.PARENT_DIR = parent_dir
+        self.LEVEL = level
 
-    def get_path(self, parent_dir, level):
-        result_dirs = [join(parent_dir, d) for d in listdir(parent_dir) if isdir(join(parent_dir, d))]
-        if result_dirs.__len__().__eq__(0):
+    @staticmethod
+    def get_path_content(parent_dir):
+        result_dirs = []
+        try:
+            result_dirs = [join(parent_dir, d) for d in listdir(parent_dir) if isdir(join(parent_dir, d))]
+            print("i am here")
+        except PermissionError as e:
+            print(str(e))
+        except FileNotFoundError as e:
+            print(str(e))
+        finally:
             return result_dirs
-        else:
-            tmp = []
-            for d in result_dirs:
-                tmp.extend(self.get_path(d, level - 1))
-            result_dirs.extend(d)
-            return result_dirs
+
+    def persist_path(self, path_list):
+        self.RESULT_LIST.extend(path_list)
