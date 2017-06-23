@@ -21,7 +21,7 @@ class TmpPathGenerator:
         # self.TMP_DIR = TemporaryDirectory(prefix="bkp_seg_python_")
         # chdir(self.TMP_DIR.name)
         chdir(self.BASE_DIR)
-        # self._main()
+        # self.__main()
 
     @staticmethod
     def _get_path_content(parent_dir):
