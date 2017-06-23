@@ -8,9 +8,9 @@ import _thread
 import errno
 import json
 import os
-import subprocess
-import tempfile
 import time
+from subprocess import Popen, PIPE, TimeoutExpired
+from tempfile import TemporaryFile
 
 
 class BkpNasSeg:
@@ -197,24 +197,6 @@ class BkpNasSeg:
         else:
             return 0
 
-    def dsmcdecrementa_fake(self, threadname):
-        """
-        Do not use it. Method created just for test purposes.
-        :param threadname:
-        :return: None
-        """
-        count = 0
-        file0 = self.FILENODE
-        file1 = self.FILENODE+".tmp"
-        while count < 5:
-            time.sleep(10)
-            count += 1
-            tmp = self.pop_out_n_lines(file0, 1)
-            cmd = "mv " + file1 + " " + file0
-            os.system(cmd)
-            print("{0} - {1}: {2}".format(threadname, count, tmp))
-        return None
-
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
@@ -252,13 +234,14 @@ class BkpNasSeg:
         while self.PID_CONTROL.__len__().__gt__(30):
             time.sleep(secs)
             secs *= 2
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
         self.PID_CONTROL.append(proc.pid)
         outs = ""
         errs = ""
         try:
             outs, errs = proc.communicate(timeout=15)
-        except subprocess.TimeoutExpired:
+        except TimeoutExpired as e:
+            print(str(e))
             proc.kill()
             outs, errs = proc.communicate()
         finally:
@@ -272,7 +255,7 @@ class BkpNasSeg:
                 # flag_done is true if
                 proc_count += 1
                 print("proc {0} is running. \'While\' ran {1} times.\n ".format(proc.pid, proc_count))
-                """
+            """
             if proc.poll() is not None:
                 print("PID {0} done.".format(proc.pid))
                 self.PID_CONTROL.remove(proc.pid)
@@ -287,7 +270,7 @@ class BkpNasSeg:
         :return: String with n first lines
         """
         fst_lines = ""
-        tmp_file = tempfile.TemporaryFile(mode="w+")
+        tmp_file = TemporaryFile(mode="w+")
         inputf = open(input_file)
         for i, line in enumerate(inputf):
             if i < lines:
