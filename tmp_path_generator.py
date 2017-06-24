@@ -5,7 +5,7 @@ list file based on level.
 """
 import string
 from os import listdir, chdir, makedirs
-from os.path import join, isdir
+from os.path import join, isdir, isfile
 from random import choice, randrange
 
 
@@ -79,10 +79,10 @@ class TmpPathGenerator:
 
     @staticmethod
     def __generate_file_name():
-        '''
+        """
 
         :return:
-        '''
+        """
         charlist = '!#$&()+,-.;=@[]^_`{}~ áéíóúàãõêüçÁÉÍÓÚÀÃÕÊÜÇ'
         file_name = ''.join(choice(string.ascii_letters + string.digits + charlist) for _ in range(randrange(4, 8)))
         file_name += '.'
@@ -91,43 +91,53 @@ class TmpPathGenerator:
 
     @staticmethod
     def __generate_dir_name():
-        '''
+        """
 
         :return:
-        '''
+        """
         charlist = '!#$&()+,-.;=@[]^_`{}~ áéíóúàãõêüçÁÉÍÓÚÀÃÕÊÜÇ'
         dir_name = ''.join(choice(string.ascii_letters + string.digits + charlist) for _ in range(randrange(3, 8)))
         return dir_name
 
     def __generate_subdirs(self):
-        '''
+        """
 
         :return:
-        '''
+        """
         for i in range(randrange(2, 5)):
             makedirs(self.__generate_dir_name())
 
     def __generate_files(self):
-        '''
+        """
 
         :return:
-        '''
+        """
         for i in range(randrange(1, 20)):
             with open(self.__generate_dir_name(), mode="w") as file:
                 txt = ''.join(choice(string.printable) for _ in range(randrange(1, 200)))
                 file.write(txt)
 
-    def _main(self):
-        '''
-        TODO: It is incompleted. Do not use yet
-        :return:
-        '''
-        parent_dir_list = [self.BASE_DIR]
-        for level in range(self.DEEP):
-            file_name = self.__generate_file_name()
-            path_list = []
-            for parent_dir in parent_dir_list:
-                path_list.extend(self._get_path_content(parent_dir))
-            self._FILELEVEL_LIST.append(file_name)
-            self.path_list_2_file_level(level, path_list)
-            parent_dir_list = path_list
+    def __main(self):
+        for level in range(self.LEVEL):
+            if level.__eq__(self._FILELEVEL_LIST.__len__()):
+                dir_list = []
+                if level.__eq__(0):
+                    dir_list.extend([self.BASE_DIR+'\n'])
+                else:
+                    if isfile(self._FILELEVEL_LIST[level - 1]):
+                        dir_list.extend(open(self._FILELEVEL_LIST[level - 1], mode="r"))
+                    else:
+                        print("file does not exists.")
+                        self._FILELEVEL_LIST.pop(level - 1)
+                        break
+                if not dir_list:
+                    print("dir_list is empty or does not exists at all")
+                    break
+                file_level = self.__generate_file_level_name(level)
+                self._FILELEVEL_LIST.append(file_level)
+                for dir_str in dir_list:
+                    for path in self.__get_path_content(dir_str[:dir_str.find('\n')]):
+                        if not path:
+                            print("empty")
+                        else:
+                            self.__path_str_2_file_level(file_level, path)
