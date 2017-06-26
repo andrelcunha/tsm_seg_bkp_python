@@ -15,7 +15,6 @@ class LevelListDir:
     """
     I do not know yet.
     """
-
     def __init__(self, parent_dir, level=0):
         self.BASE_DIR = parent_dir
         self.LEVEL = level
@@ -24,54 +23,8 @@ class LevelListDir:
         chdir(self.TMP_DIR.name)
         self.__main()
 
-    '''
-    def __get_level_path_list(self, parent_dir_list):
-        """
-        Get a list of directories in a level directory and lists the sub dirs on each dir.
-        In the end, returns a list of all the next sublevel
-        :param parent_dir_list:
-        :return:
-        """
-        path_list = []
-        for parent_dir in parent_dir_list:
-            path_list.extend(self.__get_path_content(parent_dir))
-        return path_list
-    '''
-
-    '''
     @staticmethod
-    def __persist_path_list(path_list, level):
-        file_level = ''.join(choice(ascii_uppercase + digits) for _ in range(6))
-        file_level += 'TMP_LEVEL_' + str(level)
-        with open(file_level, mode="w") as fl:
-            for line in path_list:
-                fl.write(line)
-        return file_level
-    '''
-
-    def __file_level_2_path_list(self, level):
-        print(str(level))
-        path_list = []
-        file_level = self._FILELEVEL_LIST[level]
-        with open(file_level, mode="r") as fll:
-            for line in fll:
-                path_list.append(line)
-        return path_list
-
-    def __path_list_2_file_level(self, level, path_list):
-        print(str(level))
-        file_level = self._FILELEVEL_LIST[level]
-        with open(file_level, mode="w+") as fl:
-            for line in path_list:
-                try:
-                    fl.write(line + "\n")
-                except UnicodeEncodeError as e:
-                    print(e.__str__())
-                    new_str = deal_bad_string(line)
-                    print(new_str)
-                    fl.write(new_str + "\n")
-
-    def __path_str_2_file_level(self, file_level, path_str):
+    def __path_str_2_file_level(file_level, path_str):
         with open(file_level, mode="a+") as fl:
             try:
                 fl.write(path_str + "\n")
@@ -80,27 +33,6 @@ class LevelListDir:
                 new_str = deal_bad_string(path_str)
                 print(new_str)
                 fl.write(new_str + "\n")
-
-    @staticmethod
-    def __get_path_content(parent_dir):
-        """
-        Get the content (directories) of a single path.
-        :param parent_dir:
-        :return:
-        """
-        path_list = []
-        try:
-            for d in listdir(parent_dir):
-                dir_name = join(parent_dir, d)
-                if isdir(dir_name):
-                    if not islink(dir_name):
-                        path_list.append(dir_name)
-        except PermissionError as e:
-            print(str(e))
-        except FileNotFoundError as e:
-            print(str(e))
-        finally:
-            return path_list
 
     @staticmethod
     def __generate_file_level_name(level):
@@ -127,11 +59,32 @@ class LevelListDir:
                 file_level = self.__generate_file_level_name(level)
                 self._FILELEVEL_LIST.append(file_level)
                 for dir_str in dir_list:
-                    for path in self.__get_path_content(dir_str[:dir_str.find('\n')]):
+                    for path in get_path_content(dir_str[:dir_str.find('\n')]):
                         if not path:
                             print("empty")
                         else:
                             self.__path_str_2_file_level(file_level, path)
+
+
+def get_path_content(parent_dir):
+    """
+    Get the content (directories) of a single path.
+    :param parent_dir:
+    :return:
+    """
+    path_list = []
+    try:
+        for d in listdir(parent_dir):
+            dir_name = join(parent_dir, d)
+            if isdir(dir_name):
+                if not islink(dir_name):
+                    path_list.append(dir_name)
+    except PermissionError as e:
+        print(str(e))
+    except FileNotFoundError as e:
+        print(str(e))
+    finally:
+        return path_list
 
 
 def deal_bad_string(bad_string):
