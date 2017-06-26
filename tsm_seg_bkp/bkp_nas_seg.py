@@ -248,7 +248,7 @@ class BkpNasSeg:
             self.writeonfilebytes(file_out, outs)
             self.writeonfilebytes(file_err, errs)
             proc.wait()
-            """
+            """ 
             proc_count = 0
             while proc.poll() is None:
                 # flag_done = proc.poll().__ne__(None)    # if proc hasn't terminet yet, it returns None.
