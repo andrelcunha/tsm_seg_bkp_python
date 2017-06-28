@@ -2,8 +2,7 @@
 
 from setuptools import setup, find_packages
 
-
-with open('README.rst') as f:
+with open('README.md') as f:
     readme = f.read()
 
 with open('LICENSE') as f:
@@ -11,7 +10,7 @@ with open('LICENSE') as f:
 
 setup(
     name='tsm_seg_bkp_python',
-    version='0.1.0',
+    version='0.2.1',
     description='Tool to backup a path using TSM, in a segmented way.',
     long_description=readme,
     author='Andre Luis da Cunha',

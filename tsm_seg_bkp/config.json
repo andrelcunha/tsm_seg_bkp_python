@@ -1,8 +1,8 @@
 {
   "PROCS": 30,
-  "LEVELS": 3,
-  "LEVEL_THRESHOULD": 5,
-  "BASE_DIR": "/home",
+  "LEVEL_THRESHOLD": 3,
+  "LEVEL_MAXLIMIT": 5,
+  "BASE_DIR": "/tmp/path_generator",
   "NODENAME": "TESTE_CUNHA",
   "TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",
   "TMP_DIR": "/tmp/tsm_seg_bkp/",

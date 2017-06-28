@@ -65,6 +65,12 @@ class LevelListDir:
                         else:
                             self.__path_str_2_file_level(file_level, path)
 
+    def get_levellist(self):
+        result = []
+        for filename in self._FILELEVEL_LIST:
+            result.append(join(self.TMP_DIR.name, filename))
+        return result
+
 
 def get_path_content(parent_dir):
     """
