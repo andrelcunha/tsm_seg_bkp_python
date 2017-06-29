@@ -1,7 +1,3 @@
-Python application to backup files from one node in segmented mode, through TSM.
-
-Its source code is avaliable at https://github.com/andrelcunha/tsm_seg_bkp_python
-
 # tsm_seg_bkp_python
 
 Python application to backup files from one node in segmented mode, through TSM.
