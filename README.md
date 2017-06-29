@@ -63,7 +63,7 @@ Add additional notes about how to deploy this on a live system
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](https://github.com/andrelcunha/tsm_seg_bkp_python/blob/master/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## Versioning
 
@@ -81,7 +81,6 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Acknowledgments
 
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+* Thanks to [PurpleBooth](https://gist.github.com/PurpleBooth) for the [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426).
+* Thanks to [kennethreitz](https://github.com/kennethreitz) for Python project guidelines. In the future, I will contribute with the community helping to translate his book to Brazilian Portuguese. I hope I have enought time for this ;)
 
