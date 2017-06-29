@@ -13,7 +13,8 @@ from tempfile import TemporaryDirectory
 
 class LevelListDir:
     """
-    I do not know yet.
+    :param parent_dir: string -- path to be listed.
+    :param level: int -- maximum deep that the script will dive into.
     """
     def __init__(self, parent_dir, level=0):
         self.BASE_DIR = parent_dir
@@ -85,10 +86,10 @@ def get_path_content(parent_dir):
             if isdir(dir_name):
                 if not islink(dir_name):
                     path_list.append(dir_name)
-    except PermissionError as e:
-        print(str(e))
-    except FileNotFoundError as e:
-        print(str(e))
+    except PermissionError as pe:
+        print(str(pe))
+    except FileNotFoundError as fnfe:
+        print(str(fnfe))
     finally:
         return path_list
 
@@ -96,3 +97,24 @@ def get_path_content(parent_dir):
 def deal_bad_string(bad_string):
     good_string = str(bad_string).encode('utf-8', 'surrogateescape').decode('ISO-8859-1')
     return good_string
+
+if __name__ == '__main__':
+    import sys
+    import shutil
+    parent_dir = ''
+    level = 0
+    try:
+        parent_dir = sys.argv[1]
+        level = int(sys.argv[2])
+    except IndexError as ie:
+        print(str(ie))
+        print("Missing arguments. Expecting 2, received {argv}.".format(argv=(len(sys.argv)-1)))
+        exit(1)
+    if not isdir(parent_dir):
+        print("File not found.")
+    lld = LevelListDir(parent_dir, level)
+    for level, file in enumerate(lld.get_levellist()):
+        level_file = "level_" + str(level)
+        shutil.copy2(join(parent_dir, file), join("/tmp/",level_file))
+    chdir("/")
+    exit(0)

@@ -8,6 +8,7 @@ import _thread
 import errno
 import json
 import os
+import os.path
 import time
 from subprocess import Popen, PIPE, TimeoutExpired
 from tempfile import TemporaryFile
@@ -24,6 +25,7 @@ class BkpNasSeg:
     LEVEL_MAXLIMIT = 0
     BASE_DIR = ""
     NODENAME = ""
+    OPTFILE = ""
     TSM_DIR = ""
     TMP_DIR = ""
     DSMC = ""
@@ -35,10 +37,7 @@ class BkpNasSeg:
     PID_CONTROL = []
     debug = True
 
-    def __init__(self):
-        cwd = os.path.realpath(__file__)
-        cwd = cwd[:cwd.find(os.path.basename(__file__))]
-        config_file = os.path.join(cwd, 'config.json')
+    def __init__(self, config_file):
         self.set_configuration(self.get_configuration(config_file))
         self.NOMEDIR = self.BASE_DIR.replace("/", "")
         self.TXT_DIR = os.path.join(self.TSM_DIR, "TXT")
@@ -52,23 +51,6 @@ class BkpNasSeg:
         if self.debug:
             for attrib in dir(self):
                 print("{0}: {1}".format(attrib, getattr(self, attrib)))
-
-    @staticmethod
-    def generate_config_file():
-        """TODO"""
-        config_file = "config.json"
-        config_content = '{\n' \
-                         '"PROCS": 30,\n' \
-                         '"LEVELS": 3,\n' \
-                         '"LEVEL_MAXLIMIT": 5\n,' \
-                         '"BASE_DIR": "/home",\n' \
-                         '"NODENAME": "TESTE_CUNHA",\n' \
-                         '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
-                         '"TMP_DIR": "/tmp/tsm_seg_bkp/",\n' \
-                         '"DSMC": "/usr/bin/dsmc"\n' \
-                         '}'
-        with open(config_file, mode="w") as cf:
-            cf.write(config_content)
 
     @staticmethod
     def config_file_exists(config_file):
@@ -251,21 +233,17 @@ class BkpNasSeg:
             print("Error: not enough values to unpack")
             print(target)
             exit(-1)
-        cmd = ["sudo", self.DSMC, "i", "-verbose", "-se=" + self.NODENAME, param_sub, param_target]
-        print(cmd)
+        '''
+        It is possible to remove next line to create a funcion called prepare_command
+        '''
+        # cmd = ["sudo", self.DSMC, "i", "-verbose", "-se=" + self.NODENAME, param_sub, param_target]
+        cmd = ["sudo", self.DSMC, "i", "-verbose", "-optfile=" + self.OPTFILE, param_sub, param_target]
+        if self.debug:
+            print(cmd)
         secs = 1
         while self.PID_CONTROL.__len__().__gt__(30):
             time.sleep(secs)
             secs *= 2
-        '''
-        cmd_ = ''
-        for param in cmd:
-            cmd_ += param
-            cmd_ += ' '
-        print(cmd_)
-        
-        os.system(cmd_)
-        '''
         proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
         self.PID_CONTROL.append(proc.pid)
         outs = ""
@@ -310,12 +288,29 @@ class BkpNasSeg:
         return fst_lines
 
 
-def main():
+def generate_config_file(config_file):
+    """TODO"""
+    config_content = '{\n' \
+                     '"PROCS": 30,\n' \
+                     '"LEVELS": 3,\n' \
+                     '"LEVEL_MAXLIMIT": 5,\n' \
+                     '"BASE_DIR": "/home",\n' \
+                     '"NODENAME": "TESTE_CUNHA",\n' \
+                     '"OPTFILE": "/opt/tivoli/tsm/client/ba/bin/dsm.opt",\n' \
+                     '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
+                     '"TMP_DIR": "/tmp/tsm_seg_bkp/",\n' \
+                     '"DSMC": "/usr/bin/dsmc"\n' \
+                     '}'
+    with open(config_file, mode="w") as cf:
+        cf.write(config_content)
+
+
+def main(config_file):
     """
     Main
     :return:
     """
-    bkp = BkpNasSeg()
+    bkp = BkpNasSeg(config_file)
     if not bkp.testlevel:
         print("Programa terminado.")
         exit(-1)
@@ -350,4 +345,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    import os.path
+    conf_file = ''
+    try:
+        conf_file = sys.argv[1]
+    except IndexError as ie:
+        print(str(ie))
+        print("Missing arguments. Expecting 1, received {argv}.".format(argv=(len(sys.argv)-1)))
+        print("Configuration file not found.\n")
+        conf_file = "config.json"
+        generate_config_file(conf_file)
+        print("Configuration file example generated.")
+        print("Please, configure with your needs and try again.")
+        exit(0)
+    try:
+        if not os.path.isfile(conf_file):
+            raise FileNotFoundError
+        main(conf_file)
+    except FileNotFoundError as fnfe:
+        print(str(fnfe))
+        print("File not found. Please inform a existent path.")
+        exit(1)
