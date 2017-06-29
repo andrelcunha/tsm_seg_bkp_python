@@ -12,10 +12,9 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
+Ther is no other package as prerequisite besides nosetest. You can get it running this command:
 ```
-Give examples
+pip install -r requirements.txt
 ```
 
 ### Installing
@@ -76,13 +75,13 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 ## Authors
 
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
+* **Andre Luis da Cunha** - *Initial work* - [andrelcunha](https://github.com/andrelcunha)
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/andrelcunha/tsm_seg_bkp_python/contributors) who participated in this project.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
