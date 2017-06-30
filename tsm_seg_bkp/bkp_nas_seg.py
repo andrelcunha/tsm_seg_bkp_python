@@ -199,7 +199,7 @@ class BkpNasSeg:
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
-        Depois exclui estas linhas da lista de diretórios, e decrementa a várial de contabilização do número de linhas
+        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
         ($LINHAS).
         """
 
@@ -237,7 +237,7 @@ class BkpNasSeg:
         It is possible to remove next line to create a funcion called prepare_command
         '''
         # cmd = ["sudo", self.DSMC, "i", "-verbose", "-se=" + self.NODENAME, param_sub, param_target]
-        cmd = ["sudo", self.DSMC, "i", "-verbose", "-optfile=" + self.OPTFILE, param_sub, param_target]
+        cmd = [self.DSMC, "i", "-verbose", "-optfile=" + self.OPTFILE, param_sub, param_target]
         if self.debug:
             print(cmd)
         secs = 1
@@ -249,7 +249,7 @@ class BkpNasSeg:
         outs = ""
         errs = ""
         try:
-            outs, errs = proc.communicate(timeout=15)
+            outs, errs = proc.communicate()
         except TimeoutExpired as e:
             print(str(e))
             proc.kill()
@@ -292,7 +292,7 @@ def generate_config_file(config_file):
     """TODO"""
     config_content = '{\n' \
                      '"PROCS": 30,\n' \
-                     '"LEVELS": 3,\n' \
+                     '"LEVEL_THRESHOLD": 3,\n' \
                      '"LEVEL_MAXLIMIT": 5,\n' \
                      '"BASE_DIR": "/home",\n' \
                      '"NODENAME": "TESTE_CUNHA",\n' \
@@ -353,12 +353,15 @@ if __name__ == "__main__":
     except IndexError as ie:
         print(str(ie))
         print("Missing arguments. Expecting 1, received {argv}.".format(argv=(len(sys.argv)-1)))
-        print("Configuration file not found.\n")
         conf_file = "config.json"
-        generate_config_file(conf_file)
-        print("Configuration file example generated.")
-        print("Please, configure with your needs and try again.")
-        exit(0)
+        if not os.path.isfile(conf_file):
+            print("Configuration file not found.\n")
+            generate_config_file(conf_file)
+            print("Configuration file example generated.")
+            print("Please, configure with your needs and try again.")
+            exit(0)
+        else:
+            print("Found configuration file.\n")
     try:
         if not os.path.isfile(conf_file):
             raise FileNotFoundError
