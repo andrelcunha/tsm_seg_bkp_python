@@ -199,7 +199,7 @@ class BkpNasSeg:
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
-        Depois exclui estas linhas da lista de diretórios, e decrementa a várial de contabilização do número de linhas
+        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
         ($LINHAS).
         """
 
