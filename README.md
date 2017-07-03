@@ -70,6 +70,5 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Acknowledgments
 
-*    Thanks to **PurpleBooth** for the [CONTRIBUTING.md].
-*    Thanks to **kennethreitz** for Python project guidelines. In the future, I will contribute with the community helping to translate his book to Brazilian Portuguese. I hope I have enought time for this :wink:
-
+*    Thanks to PurpleBooth for the CONTRIBUTING.md.
+*    Thanks to kennethreitz for Python project guidelines. In the future, I will contribute with the community helping to translate his book to Brazilian Portuguese. I hope I have enought time for this :wink:
