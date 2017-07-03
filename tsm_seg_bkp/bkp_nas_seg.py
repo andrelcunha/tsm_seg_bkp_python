@@ -12,7 +12,6 @@ import os.path
 import time
 from subprocess import Popen, PIPE
 from tempfile import TemporaryFile
-
 import tsm_seg_bkp.level_listdir
 
 
