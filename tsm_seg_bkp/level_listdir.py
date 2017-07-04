@@ -13,12 +13,12 @@ from tempfile import TemporaryDirectory
 
 class LevelListDir:
     """
-    :param parent_dir: string -- path to be listed.
-    :param level: int -- maximum deep that the script will dive into.
+    :param base_dir: string -- path to be listed.
+    :param lvl: int -- maximum deep that the script will dive into.
     """
-    def __init__(self, parent_dir, level=0):
-        self.BASE_DIR = parent_dir
-        self.LEVEL = level
+    def __init__(self, base_dir, lvl=0):
+        self.BASE_DIR = base_dir
+        self.LEVEL = lvl
         self._FILELEVEL_LIST = []
         self.TMP_DIR = TemporaryDirectory(prefix="bkp_seg_python_")
         chdir(self.TMP_DIR.name)
@@ -36,35 +36,35 @@ class LevelListDir:
                 fl.write(new_str + "\n")
 
     @staticmethod
-    def __generate_file_level_name(level):
-        file_level = 'LEVEL_' + str(level+1) + '-'
+    def __generate_file_level_name(lvl):
+        file_level = 'LEVEL_' + str(lvl+1) + '-'
         file_level += ''.join(choice(ascii_uppercase + digits) for _ in range(6))
         return file_level
 
     def __main(self):
-        for level in range(self.LEVEL):
-            if level.__eq__(self._FILELEVEL_LIST.__len__()):
+        for lvl in range(self.LEVEL):
+            if lvl.__eq__(self._FILELEVEL_LIST.__len__()):
                 dir_list = []
-                if level.__eq__(0):
+                if lvl.__eq__(0):
                     dir_list.extend([self.BASE_DIR+'\n'])
                 else:
-                    if isfile(self._FILELEVEL_LIST[level - 1]):
-                        dir_list.extend(open(self._FILELEVEL_LIST[level - 1], mode="r"))
+                    if isfile(self._FILELEVEL_LIST[lvl - 1]):
+                        dir_list.extend(open(self._FILELEVEL_LIST[lvl - 1], mode="r"))
                     else:
                         print("file does not exists.")
-                        self._FILELEVEL_LIST.pop(level - 1)
+                        self._FILELEVEL_LIST.pop(lvl - 1)
                         break
                 if not dir_list:
                     print("dir_list is empty or does not exists at all")
                     break
-                file_level = self.__generate_file_level_name(level)
-                self._FILELEVEL_LIST.append(file_level)
+                file_lvl = self. __generate_file_level_name(lvl)
+                self._FILELEVEL_LIST.append(file_lvl)
                 for dir_str in dir_list:
                     for path in get_path_content(dir_str[:dir_str.find('\n')]):
                         if not path:
                             print("empty")
                         else:
-                            self.__path_str_2_file_level(file_level, path)
+                            self.__path_str_2_file_level(file_lvl, path)
 
     def get_levellist(self):
         result = []
@@ -73,16 +73,16 @@ class LevelListDir:
         return result
 
 
-def get_path_content(parent_dir):
+def get_path_content(directory):
     """
     Get the content (directories) of a single path.
-    :param parent_dir:
+    :param directory:
     :return:
     """
     path_list = []
     try:
-        for d in listdir(parent_dir):
-            dir_name = join(parent_dir, d)
+        for d in listdir(directory):
+            dir_name = join(directory, d)
             if isdir(dir_name):
                 if not islink(dir_name):
                     path_list.append(dir_name)
@@ -115,6 +115,6 @@ if __name__ == '__main__':
     lld = LevelListDir(parent_dir, level)
     for level, file in enumerate(lld.get_levellist()):
         level_file = "level_" + str(level)
-        shutil.copy2(join(parent_dir, file), join("/tmp/",level_file))
+        shutil.copy2(join(parent_dir, file), join("/tmp/", level_file))
     chdir("/")
     exit(0)
