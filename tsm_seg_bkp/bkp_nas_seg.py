@@ -36,6 +36,7 @@ class BkpNasSeg:
     TSMERRORLOG = ""
     PID_CONTROL = []
     debug = True
+    sudo = False
 
     def __init__(self, config_file):
         self.set_configuration(self.get_configuration(config_file))
@@ -146,7 +147,6 @@ class BkpNasSeg:
         :param: None
         :return None
         """
-
         file_level_list = []
         lld = tsm_seg_bkp.level_listdir.LevelListDir(self.BASE_DIR, self.LEVEL_MAXLIMIT)
         file_level_list.extend(lld.get_levellist())
@@ -169,6 +169,7 @@ class BkpNasSeg:
         os.system(cmd)
         cmd = "rm -f " + file_list
         os.system(cmd)
+        os.chdir(self.TSM_DIR)
         return None
 
     @staticmethod
@@ -190,6 +191,7 @@ class BkpNasSeg:
         else:
             return 0
 
+    '''
     def dsmcdecrementa(self, command, file_out, file_err, sudo=False, debug=False):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
@@ -212,6 +214,27 @@ class BkpNasSeg:
                 time.sleep(secs)
                 secs *= 2
                 self.execute_command(cmd, file_out, file_err, debug)
+        return None
+    '''
+
+    def dsmcdecrementa(self):
+        """
+        Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
+        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
+        ($LINHAS).
+        """
+        command = self.DSMC
+        file_out = self.TSMSCHEDLOG
+        file_err = self.TSMERRORLOG
+        sudo = self.sudo
+        debug = self.debug
+        raw_line = self.pop_out_n_lines(self.FILENODE, 1)
+        optfile = self.OPTFILE
+        dir_target = raw_line.replace('\n', '')
+        print(dir_target)
+        param_sub, param_target = self.split_target_str(dir_target, debug)
+        cmd = self.prepare_command(command, param_sub, param_target, optfile, sudo, debug)
+        self.execute_command(cmd, file_out, file_err, debug)
         return None
 
     @staticmethod
@@ -252,7 +275,7 @@ class BkpNasSeg:
             cmd.extend(["sudo"])
         cmd.extend([command])
         cmd.extend(["i"])
-        cmd.extend(["-verbose"])
+        cmd.extend(["-quiet"])
         cmd.extend(["-optfile=" + optfile])
         cmd.extend([param_sub])
         cmd.extend([param_target])
@@ -341,29 +364,27 @@ def main(config_file):
     print("Initial quatity of files to be copied: {linhas}".format(linhas=linhas))
     threads = 0
     # enquanto tiver arquivos a serem copiados
-    file_out = bkp.TSMSCHEDLOG
-    file_err = bkp.TSMERRORLOG
     os.chdir(bkp.TSM_DIR)
     while True:
-        try:
-            # bkp.dsmcdecrementa()
-            _thread.start_new_thread(bkp.dsmcdecrementa, (file_out, file_err))
-            threads += 1
-        except RuntimeError:
-            print("Error: unable to start thread")
-        finally:
-            linhas = bkp.file_len(bkp.FILENODE)
-            if bkp.debug:
-                print("thread " + str(threads))
-                print("Files to be copied: {linhas}".format(linhas=linhas))
-            time.sleep(0.1)
-            for pid in bkp.PID_CONTROL:
+        if bkp.PID_CONTROL.__len__().__lt__(bkp.PROCS):
+            try:
+                # bkp.dsmcdecrementa()
+                _thread.start_new_thread(bkp.dsmcdecrementa, ())
+                threads += 1
+            except RuntimeError:
+                print("Error: unable to start thread")
+            finally:
+                linhas = bkp.file_len(bkp.FILENODE)
                 if bkp.debug:
-                    print(str(pid))
-            if bkp.debug:
-                print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
-        if (not bkp.PID_CONTROL) and linhas == 0:
-            break
+                    print("thread " + str(threads))
+                    print("Files to be copied: {linhas}".format(linhas=linhas))
+                    for pid in bkp.PID_CONTROL:
+                        print(str(pid))
+                    print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
+                time.sleep(0.1)
+            if (not bkp.PID_CONTROL) and linhas == 0:
+                break
+    print("Program sucessfully executed.")
     return 0
 
 
