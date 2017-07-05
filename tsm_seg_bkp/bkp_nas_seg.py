@@ -305,7 +305,11 @@ def split_target_str(target_str, debug=False):
 
 
 def generate_config_file(config_file):
-    """TODO"""
+    """
+
+    :param config_file:
+    :return:
+    """
     config_content = '{\n' \
                      '"PROCS": 30,\n' \
                      '"LEVEL_THRESHOLD": 3,\n' \
