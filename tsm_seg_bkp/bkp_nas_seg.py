@@ -191,32 +191,6 @@ class BkpNasSeg:
         else:
             return 0
 
-    '''
-    def dsmcdecrementa(self, command, file_out, file_err, sudo=False, debug=False):
-        """
-        Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
-        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
-        ($LINHAS).
-        """
-        date = time.strftime("%d%m%y-%H%M%S")
-        # file_node_ciclo = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-CICLO-" + date
-        file_node_ciclo = os.path.join(self.TXT_DIR, self.NODENAME)
-        file_node_ciclo += "-" + self.NOMEDIR + "-CICLO-" + date + ".txt"
-        self.writeonfile(file_node_ciclo, self.pop_out_n_lines(self.FILENODE, self.PROCS))
-        while self.file_len(file_node_ciclo) > 0:
-            tmp = self.pop_out_n_lines(file_node_ciclo, 1)
-            dir_target = tmp.replace('\n', '')
-            param_sub, param_target = self.split_target_str(dir_target, debug)
-            optfile = self.OPTFILE
-            cmd = self.prepare_command(command, param_sub, param_target, optfile, sudo, debug)
-            secs = 1
-            while self.PID_CONTROL.__len__().__gt__(self.PROCS):
-                time.sleep(secs)
-                secs *= 2
-                self.execute_command(cmd, file_out, file_err, debug)
-        return None
-    '''
-
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
@@ -230,58 +204,13 @@ class BkpNasSeg:
         debug = self.debug
         raw_line = self.pop_out_n_lines(self.FILENODE, 1)
         optfile = self.OPTFILE
-        dir_target = raw_line.replace('\n', '')
+        # dir_target = raw_line.replace('\n', '')
+        dir_target = raw_line.rstrip('\n')
         print(dir_target)
-        param_sub, param_target = self.split_target_str(dir_target, debug)
-        cmd = self.prepare_command(command, param_sub, param_target, optfile, sudo, debug)
+        param_sub, param_target = split_target_str(dir_target, debug)
+        cmd = prepare_command(command, param_sub, param_target, optfile, sudo, debug)
         self.execute_command(cmd, file_out, file_err, debug)
         return None
-
-    @staticmethod
-    def split_target_str(target_str, debug=False):
-        """
-        Slipt string with target directory into parm_dir and param_sub
-        :param target_str:
-        :param debug:
-        :return: tuple param_sub, param_target
-        """
-        param_sub = ""
-        param_target = ""
-        try:
-            # separa param '-sub=yes' do caminho alvo
-            param_sub, param_target = target_str.split(' ', 1)
-            if debug:
-                print('"' + param_target + '"')
-        except ValueError:
-            print("Error: not enough values to unpack")
-            print(target_str)
-            exit(-1)
-        return param_sub, param_target
-
-    @staticmethod
-    def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False):
-        """
-        Prepare the backup command
-        :param command: base command to be executed i.e: /usr/bin/dsmc
-        :param param_sub:
-        :param param_target:
-        :param optfile:
-        :param sudo:
-        :param debug:
-        :return: string cmd
-        """
-        cmd = []
-        if sudo:
-            cmd.extend(["sudo"])
-        cmd.extend([command])
-        cmd.extend(["i"])
-        cmd.extend(["-quiet"])
-        cmd.extend(["-optfile=" + optfile])
-        cmd.extend([param_sub])
-        cmd.extend([param_target])
-        if debug:
-            print(cmd)
-        return cmd
 
     def execute_command(self, cmd, file_out, file_err, debug=False):
         """
@@ -329,6 +258,52 @@ class BkpNasSeg:
         return fst_lines
 
 
+def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False):
+    """
+    Prepare the backup command
+    :param command: base command to be executed i.e: /usr/bin/dsmc
+    :param param_sub:
+    :param param_target:
+    :param optfile:
+    :param sudo:
+    :param debug:
+    :return: string cmd
+    """
+    cmd = []
+    if sudo:
+        cmd.extend(["sudo"])
+    cmd.extend([command])
+    cmd.extend(["i"])
+    cmd.extend(["-quiet"])
+    cmd.extend(["-optfile=" + optfile])
+    cmd.extend([param_sub])
+    cmd.extend([param_target])
+    if debug:
+        print(cmd)
+    return cmd
+
+
+def split_target_str(target_str, debug=False):
+    """
+    Slipt string with target directory into parm_dir and param_sub
+    :param target_str:
+    :param debug:
+    :return: tuple param_sub, param_target
+    """
+    param_sub = ""
+    param_target = ""
+    try:
+        # separa param '-sub=yes' do caminho alvo
+        param_sub, param_target = target_str.split(' ', 1)
+        if debug:
+            print('"' + param_target + '"')
+    except ValueError:
+        print("Error: not enough values to unpack")
+        print(target_str)
+        exit(-1)
+    return param_sub, param_target
+
+
 def generate_config_file(config_file):
     """TODO"""
     config_content = '{\n' \
@@ -366,7 +341,7 @@ def main(config_file):
     # enquanto tiver arquivos a serem copiados
     os.chdir(bkp.TSM_DIR)
     while True:
-        if bkp.PID_CONTROL.__len__().__lt__(bkp.PROCS):
+        if bkp.PID_CONTROL.__len__().__lt__(bkp.PROCS) and linhas > 0:
             try:
                 # bkp.dsmcdecrementa()
                 _thread.start_new_thread(bkp.dsmcdecrementa, ())
@@ -381,7 +356,7 @@ def main(config_file):
                     for pid in bkp.PID_CONTROL:
                         print(str(pid))
                     print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
-                time.sleep(0.1)
+                time.sleep(1)
             if (not bkp.PID_CONTROL) and linhas == 0:
                 break
     print("Program sucessfully executed.")
