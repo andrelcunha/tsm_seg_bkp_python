@@ -334,13 +334,16 @@ def main(config_file):
     bkp = BkpNasSeg(config_file)
     if not bkp.testlevel(bkp.LEVEL_THRESHOLD, bkp.LEVEL_MAXLIMIT):
         msg = "Nível máximo de segmentação devem estar entre um (1) e cinco (5).\n"
-        msg += "Valor de corte para ativar backup em subniveis deve ser menor que nível máximo.\n"
+        msg += "Valor de corte para ativar backup em subniveis deve não ser maior que o nível máximo.\n"
         msg += "Programa terminado."
         print(msg)
-        exit(-1)
+        exit(1)
+    start_listing = time.time()
+    print("Listing directories started at {start}".format(start=start_listing))
     bkp.generatetextfile()
+    print("Elapsed Time while listing directories: %s" % (time.time() - start_listing))
     linhas = bkp.file_len(bkp.FILENODE)
-    print("Initial quatity of files to be copied: {linhas}".format(linhas=linhas))
+    print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
     threads = 0
     # enquanto tiver arquivos a serem copiados
     os.chdir(bkp.TSM_DIR)
@@ -360,7 +363,7 @@ def main(config_file):
                     for pid in bkp.PID_CONTROL:
                         print(str(pid))
                     print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
-                time.sleep(1)
+                time.sleep(0.8)
             if (not bkp.PID_CONTROL) and linhas == 0:
                 break
     print("Program sucessfully executed.")
@@ -371,6 +374,7 @@ if __name__ == "__main__":
     import sys
     import os.path
     conf_file = ''
+    start = time.time()
     try:
         conf_file = sys.argv[1]
     except IndexError as ie:
@@ -393,3 +397,4 @@ if __name__ == "__main__":
         print(str(fnfe))
         print("File not found. Please inform a existent path.")
         exit(1)
+    print("Elapsed Time: {time}".format(time=(time.time() - start)))

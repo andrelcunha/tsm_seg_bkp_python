@@ -11,7 +11,7 @@ These instructions will get you a copy of the project up and running on your loc
 It is necessary that it has python 3 installed on the machine.
 There is no other package as prerequisite besides nosetest. You can get it running this command:
 ```
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### Installing
