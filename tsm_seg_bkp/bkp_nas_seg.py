@@ -154,10 +154,12 @@ class BkpNasSeg:
             if level.__le__(self.LEVEL_THRESHOLD):
                 file_level = file_level_list[level - 1]
                 if level.__lt__(self.LEVEL_THRESHOLD):
-                    cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
+                    # cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
+                    cmd = "sed 's/^/-sub=no /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
                 elif level.__eq__(self.LEVEL_THRESHOLD):
-                    cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
+                    # cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
+                    cmd = "sed 's/^/-sub=yes /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
         file_list = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-LISTADIR.txt"
         cmd = "sed \"/.snapshot/d\" " + self.FILENODE + ">> " + file_list
@@ -165,7 +167,8 @@ class BkpNasSeg:
         this statement can be replaced by str.replace(".snapshot","")
         '''
         os.system(cmd)
-        cmd = "sed 's/$/\/\"/' " + file_list + ">" + self.FILENODE
+        # cmd = "sed 's/$/\/\"/' " + file_list + ">" + self.FILENODE
+        cmd = "cat " + file_list + ">" + self.FILENODE
         os.system(cmd)
         cmd = "rm -f " + file_list
         os.system(cmd)
@@ -204,8 +207,8 @@ class BkpNasSeg:
         debug = self.debug
         raw_line = self.pop_out_n_lines(self.FILENODE, 1)
         optfile = self.OPTFILE
-        # dir_target = raw_line.replace('\n', '')
-        dir_target = raw_line.rstrip('\n')
+        dir_target = raw_line.replace('\n', '')
+        # dir_target = raw_line.rstrip('\n')
         print(dir_target)
         param_sub, param_target = split_target_str(dir_target, debug)
         cmd = prepare_command(command, param_sub, param_target, optfile, sudo, debug)
