@@ -19,26 +19,26 @@ class BkpNasSeg:
     """
     Executes a segmented backup from target path, setup in BASE_DIR attribute.
     """
-    PROCS = 0
-    LEVEL_THRESHOLD = 0
-    LEVEL_MAXLIMIT = 0
-    BASE_DIR = ""
-    NODENAME = ""
-    OPTFILE = ""
-    TSM_DIR = ""
-    TSM_LOG_DIR = ""
-    TMP_DIR = ""
-    DSMC = ""
-    TXT_DIR = ""
-    NOMEDIR = ""
-    FILENODE = ""
-    TSMSCHEDLOG = ""
-    TSMERRORLOG = ""
-    PID_CONTROL = []
-    debug = True
-    sudo = False
 
     def __init__(self, config_file):
+        self.PROCS = 0
+        self.LEVEL_THRESHOLD = 0
+        self.LEVEL_MAXLIMIT = 0
+        self.BASE_DIR = ""
+        self.NODENAME = ""
+        self.OPTFILE = ""
+        self.TSM_DIR = ""
+        self.TSM_LOG_DIR = ""
+        self.TMP_DIR = ""
+        self.DSMC = ""
+        self.TXT_DIR = ""
+        self.NOMEDIR = ""
+        self.FILENODE = ""
+        self.TSMSCHEDLOG = ""
+        self.TSMERRORLOG = ""
+        self.PID_CONTROL = []
+        self.debug = True
+        self.sudo = False
         self.set_configuration(self.get_configuration(config_file))
         self.NOMEDIR = self.BASE_DIR.replace("/", "")
         self.TXT_DIR = os.path.join(self.TSM_DIR, "TXT")
@@ -137,8 +137,13 @@ class BkpNasSeg:
         :return: flag_ok: Boolean"""
         return (0 < level_max < 6) and (level_threshold <= level_max) and (level_threshold > 0)
 
-    def generatetextfile(self):
+    def generatetextfile(self, base_dir, level_maxlimit):
         """
+        TODO:
+        think about toggle
+        file_level = file_level_list[level - 1]
+        by
+        file_level = file_level_list[level - 1]
         Generate text file with all directories that will be backed up,
         including sub=yes or sub=no option on each line.
 
@@ -148,16 +153,19 @@ class BkpNasSeg:
         :return None
         """
         file_level_list = []
-        lld = tsm_seg_bkp.level_listdir.LevelListDir(self.BASE_DIR, self.LEVEL_MAXLIMIT)
-        file_level_list.extend(lld.get_levellist())
-        for level in range(1, self.LEVEL_MAXLIMIT + 1):
-            if level.__le__(self.LEVEL_THRESHOLD):
+        if type(base_dir) is str:
+            base_dir = [base_dir]
+        for bdir in base_dir:
+            lld = tsm_seg_bkp.level_listdir.LevelListDir(bdir, level_maxlimit)
+            file_level_list.extend(lld.get_levellist())
+        for level in range(1, level_maxlimit + 1):
+            if level.__le__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                 file_level = file_level_list[level - 1]
-                if level.__lt__(self.LEVEL_THRESHOLD):
+                if level.__lt__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                     # cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
                     cmd = "sed 's/^/-sub=no /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
-                elif level.__eq__(self.LEVEL_THRESHOLD):
+                elif level.__eq__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                     # cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
                     cmd = "sed 's/^/-sub=yes /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
@@ -197,9 +205,10 @@ class BkpNasSeg:
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
-        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
+        Depois exclui estas linhas da lista de diretórios, decrementando a váriavel de contabilização do número de linhas
         ($LINHAS).
         """
+        '''
         command = self.DSMC
         file_out = self.TSMSCHEDLOG
         file_err = self.TSMERRORLOG
@@ -214,10 +223,11 @@ class BkpNasSeg:
         cmd = prepare_command(command, param_sub, param_target, optfile, sudo, debug)
         self.execute_command(cmd, file_out, file_err, debug)
         return None
+        '''
 
     def execute_command(self, cmd, file_out, file_err, debug=False):
         """
-        Execute TSM backup of target path.
+        Executes TSM backup of the target path.
         :param cmd: list
         :param file_out:
         :param file_err:
@@ -318,7 +328,7 @@ def generate_config_file(config_file):
                      '"LEVEL_THRESHOLD": 3,\n' \
                      '"LEVEL_MAXLIMIT": 5,\n' \
                      '"BASE_DIR": "/home",\n' \
-                     '"NODENAME": "TESTE_CUNHA",\n' \
+                     '"NODENAME": ["TESTE_CUNHA"],\n' \
                      '"OPTFILE": "/opt/tivoli/tsm/client/ba/bin/dsm.opt",\n' \
                      '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
                      '"TSM_LOG_DIR": "/opt/tivoli/tsm/client/ba/bin/logs",\n' \
@@ -343,7 +353,7 @@ def main(config_file):
         exit(1)
     start_listing = time.time()
     print("Listing directories started at {start}".format(start=start_listing))
-    bkp.generatetextfile()
+    bkp.generatetextfile(bkp.BASE_DIR, bkp.LEVEL_MAXLIMIT)
     print("Elapsed Time while listing directories: %s" % (time.time() - start_listing))
     linhas = bkp.file_len(bkp.FILENODE)
     print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
