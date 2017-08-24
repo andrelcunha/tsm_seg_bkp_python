@@ -4,11 +4,11 @@
 list file based on level.
 """
 
-from os import listdir, chdir
-from os.path import join, isdir, islink, isfile
-from random import choice
-from string import ascii_uppercase, digits
+from os import chdir, scandir
+from os.path import join, isdir, isfile
 from tempfile import TemporaryDirectory
+# from random import choice
+# from string import ascii_uppercase, digits
 
 
 class LevelListDir:
@@ -26,6 +26,12 @@ class LevelListDir:
 
     @staticmethod
     def __path_str_2_file_level(file_level, path_str):
+        """
+        Appends a path into file.
+        :param file_level:
+        :param path_str:
+        :return:
+        """
         with open(file_level, mode="a+") as fl:
             try:
                 fl.write(path_str + "\n")
@@ -37,34 +43,40 @@ class LevelListDir:
 
     @staticmethod
     def __generate_file_level_name(lvl):
-        file_level = 'LEVEL_' + str(lvl+1) + '-'
-        file_level += ''.join(choice(ascii_uppercase + digits) for _ in range(6))
+        file_level = 'LEVEL_' + str(lvl+1)
         return file_level
 
     def __main(self):
         for lvl in range(self.LEVEL):
+            print("nivel {lvl}".format(lvl=(str(lvl))))
             if lvl.__eq__(self._FILELEVEL_LIST.__len__()):
+                print("lvl={size}".format(size=str(self._FILELEVEL_LIST.__len__())))
                 dir_list = []
+                file_lvl = self.__generate_file_level_name(lvl)
                 if lvl.__eq__(0):
                     dir_list.extend([self.BASE_DIR+'\n'])
+                    for line in dir_list:
+                        for path in get_path_content(line[:line.find('\n')]):
+                            if not path:
+                                print("empty")
+                            else:
+                                self.__path_str_2_file_level(file_lvl, path)
                 else:
                     if isfile(self._FILELEVEL_LIST[lvl - 1]):
-                        dir_list.extend(open(self._FILELEVEL_LIST[lvl - 1], mode="r"))
+                        with open(self._FILELEVEL_LIST[lvl - 1], mode="r") as former_file_lvl:
+                            for line in former_file_lvl:
+                                # dir_list.append(line)
+                                for path in get_path_content(line[:line.find('\n')]):
+                                    if not path:
+                                        print("empty")
+                                    else:
+                                        print(path)
+                                        self.__path_str_2_file_level(file_lvl, path)
                     else:
                         print("file does not exists.")
                         self._FILELEVEL_LIST.pop(lvl - 1)
                         break
-                if not dir_list:
-                    print("dir_list is empty or does not exists at all")
-                    break
-                file_lvl = self. __generate_file_level_name(lvl)
                 self._FILELEVEL_LIST.append(file_lvl)
-                for dir_str in dir_list:
-                    for path in get_path_content(dir_str[:dir_str.find('\n')]):
-                        if not path:
-                            print("empty")
-                        else:
-                            self.__path_str_2_file_level(file_lvl, path)
 
     def get_levellist(self):
         result = []
@@ -79,13 +91,13 @@ def get_path_content(directory):
     :param directory:
     :return:
     """
+
     path_list = []
     try:
-        for d in listdir(directory):
-            dir_name = join(directory, d)
-            if isdir(dir_name):
-                if not islink(dir_name):
-                    path_list.append(dir_name)
+        # print(directory)
+        for entry in scandir(directory):
+            if entry.is_dir(follow_symlinks=False):
+                path_list.append(entry.path)
     except PermissionError as pe:
         print(str(pe))
     except FileNotFoundError as fnfe:
