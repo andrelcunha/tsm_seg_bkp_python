@@ -10,9 +10,8 @@ import json
 import os
 import os.path
 import time
-from subprocess import Popen, PIPE, TimeoutExpired
+from subprocess import Popen, PIPE
 from tempfile import TemporaryFile
-
 import tsm_seg_bkp.level_listdir
 
 
@@ -20,31 +19,32 @@ class BkpNasSeg:
     """
     Executes a segmented backup from target path, setup in BASE_DIR attribute.
     """
-    PROCS = 0
-    LEVEL_THRESHOLD = 0
-    LEVEL_MAXLIMIT = 0
-    BASE_DIR = ""
-    NODENAME = ""
-    OPTFILE = ""
-    TSM_DIR = ""
-    TMP_DIR = ""
-    DSMC = ""
-    TXT_DIR = ""
-    NOMEDIR = ""
-    FILENODE = ""
-    TSMSCHEDLOG = ""
-    TSMERRORLOG = ""
-    PID_CONTROL = []
-    debug = True
 
     def __init__(self, config_file):
+        self.PROCS = 0
+        self.LEVEL_THRESHOLD = 0
+        self.LEVEL_MAXLIMIT = 0
+        self.BASE_DIR = ""
+        self.NODENAME = ""
+        self.OPTFILE = ""
+        self.TSM_DIR = ""
+        self.TSM_LOG_DIR = ""
+        self.TMP_DIR = ""
+        self.DSMC = ""
+        self.TXT_DIR = ""
+        self.NOMEDIR = ""
+        self.FILENODE = ""
+        self.TSMSCHEDLOG = ""
+        self.TSMERRORLOG = ""
+        self.PID_CONTROL = []
+        self.debug = True
+        self.sudo = False
         self.set_configuration(self.get_configuration(config_file))
         self.NOMEDIR = self.BASE_DIR.replace("/", "")
         self.TXT_DIR = os.path.join(self.TSM_DIR, "TXT")
         self.FILENODE = os.path.join(self.TXT_DIR, self.NODENAME + "-" + self.NOMEDIR + ".txt")
-        logs = os.path.join(self.TSM_DIR, "logs")
-        self.TSMSCHEDLOG = os.path.join(logs, "dsmsched-" + self.NODENAME + ".log")
-        self.TSMERRORLOG = os.path.join(logs, "dsmerror-" + self.NODENAME + ".log")
+        self.TSMSCHEDLOG = os.path.join(self.TSM_LOG_DIR, "dsmsched-" + self.NODENAME + ".log")
+        self.TSMERRORLOG = os.path.join(self.TSM_LOG_DIR, "dsmerror-" + self.NODENAME + ".log")
         self.PID_CONTROL = []
         self.make_sure_path_exists(self.TXT_DIR)
         self.make_sure_file_exists(self.FILENODE)
@@ -128,22 +128,22 @@ class BkpNasSeg:
         my_file.close()
         return None
 
-    def testlevel(self):
+    @staticmethod
+    def testlevel(level_threshold, level_max):
         """
         Test 'level' configuration. Unnecessery by now.
         Testa configuração de 'nivel'
         :param: None
         :return: flag_ok: Boolean"""
-        msg = "Níveis de segmentação devem estar entre um (1) e cinco (5)"
-        flag_ok = True
-        if self.LEVEL_THRESHOLD < 1 or self.LEVEL_THRESHOLD > self.LEVEL_MAXLIMIT:
-            self.writeonfile(self.TSMSCHEDLOG, msg)
-            self.writeonfile(self.TSMERRORLOG, msg)
-            flag_ok = False
-        return flag_ok
+        return (0 < level_max < 6) and (level_threshold <= level_max) and (level_threshold > 0)
 
-    def generatetextfile(self):
+    def generatetextfile(self, base_dir, level_maxlimit):
         """
+        TODO:
+        think about toggle
+        file_level = file_level_list[level - 1]
+        by
+        file_level = file_level_list[level - 1]
         Generate text file with all directories that will be backed up,
         including sub=yes or sub=no option on each line.
 
@@ -152,18 +152,22 @@ class BkpNasSeg:
         :param: None
         :return None
         """
-
         file_level_list = []
-        lld = tsm_seg_bkp.level_listdir.LevelListDir(self.BASE_DIR, self.LEVEL_MAXLIMIT)
-        file_level_list.extend(lld.get_levellist())
-        for level in range(1, self.LEVEL_MAXLIMIT + 1):
-            if level.__le__(self.LEVEL_THRESHOLD):
+        if type(base_dir) is str:
+            base_dir = [base_dir]
+        for bdir in base_dir:
+            lld = tsm_seg_bkp.level_listdir.LevelListDir(bdir, level_maxlimit)
+            file_level_list.extend(lld.get_levellist())
+        for level in range(1, level_maxlimit + 1):
+            if level.__le__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                 file_level = file_level_list[level - 1]
-                if level.__lt__(self.LEVEL_THRESHOLD):
-                    cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
+                if level.__lt__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
+                    # cmd = "sed 's/^/-sub=no \"/' " + file_level + " >> " + self.FILENODE
+                    cmd = "sed 's/^/-sub=no /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
-                elif level.__eq__(self.LEVEL_THRESHOLD):
-                    cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
+                elif level.__eq__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
+                    # cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
+                    cmd = "sed 's/^/-sub=yes /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
         file_list = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-LISTADIR.txt"
         cmd = "sed \"/.snapshot/d\" " + self.FILENODE + ">> " + file_list
@@ -171,10 +175,12 @@ class BkpNasSeg:
         this statement can be replaced by str.replace(".snapshot","")
         '''
         os.system(cmd)
-        cmd = "sed 's/$/\/\"/' " + file_list + ">" + self.FILENODE
+        # cmd = "sed 's/$/\/\"/' " + file_list + ">" + self.FILENODE
+        cmd = "cat " + file_list + ">" + self.FILENODE
         os.system(cmd)
         cmd = "rm -f " + file_list
         os.system(cmd)
+        os.chdir(self.TSM_DIR)
         return None
 
     @staticmethod
@@ -199,68 +205,45 @@ class BkpNasSeg:
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
-        Depois exclui estas linhas da lista de diretórios, e decrementa a váriavel de contabilização do número de linhas
+        Depois exclui estas linhas da lista de diretórios, decrementando a váriavel de contabilização do número de linhas
         ($LINHAS).
         """
-
-        date = time.strftime("%d%m%y-%H%M%S")
-        # file_node_ciclo = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-CICLO-" + date
-        file_node_ciclo = os.path.join(self.TXT_DIR, self.NODENAME)
-        file_node_ciclo += "-" + self.NOMEDIR + "-CICLO-" + date + ".txt"
-        self.writeonfile(file_node_ciclo, self.pop_out_n_lines(self.FILENODE, self.PROCS))
-        while self.file_len(file_node_ciclo) > 0:
-            tmp = self.pop_out_n_lines(file_node_ciclo, 1)
-            dir_target = tmp.replace('\n', '')
-            self.executabkp(dir_target)
-        return None
-
-    def executabkp(self, target):
-        """
-        Execute TSM backup of target path
-        :param target: path to backup
-                """
+        '''
+        command = self.DSMC
         file_out = self.TSMSCHEDLOG
         file_err = self.TSMERRORLOG
-        param_sub = ""
-        param_target = ""
-        os.chdir(self.TSM_DIR)
-        try:
-            # separa param '-sub=yes' do caminho alvo
-            param_sub, param_target = target.split(' ', 1)
-            if self.debug:
-                print('"' + param_target + '"')
-        except ValueError:
-            print("Error: not enough values to unpack")
-            print(target)
-            exit(-1)
+        sudo = self.sudo
+        debug = self.debug
+        raw_line = self.pop_out_n_lines(self.FILENODE, 1)
+        optfile = self.OPTFILE
+        dir_target = raw_line.replace('\n', '')
+        # dir_target = raw_line.rstrip('\n')
+        print(dir_target)
+        param_sub, param_target = split_target_str(dir_target, debug)
+        cmd = prepare_command(command, param_sub, param_target, optfile, sudo, debug)
+        self.execute_command(cmd, file_out, file_err, debug)
+        return None
         '''
-        It is possible to remove next line to create a funcion called prepare_command
-        '''
-        # cmd = ["sudo", self.DSMC, "i", "-verbose", "-se=" + self.NODENAME, param_sub, param_target]
-        cmd = [self.DSMC, "i", "-verbose", "-optfile=" + self.OPTFILE, param_sub, param_target]
-        if self.debug:
-            print(cmd)
-        secs = 1
-        while self.PID_CONTROL.__len__().__gt__(30):
-            time.sleep(secs)
-            secs *= 2
+
+    def execute_command(self, cmd, file_out, file_err, debug=False):
+        """
+        Executes TSM backup of the target path.
+        :param cmd: list
+        :param file_out:
+        :param file_err:
+        :param debug:
+        :return:
+        """
         proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
         self.PID_CONTROL.append(proc.pid)
-        outs = ""
-        errs = ""
-        try:
-            outs, errs = proc.communicate()
-        except TimeoutExpired as e:
-            print(str(e))
-            proc.kill()
-            outs, errs = proc.communicate()
-        finally:
-            self.writeonfilebytes(file_out, outs)
-            self.writeonfilebytes(file_err, errs)
-            proc.wait()
-            if proc.poll() is not None:
+        outs, errs = proc.communicate()
+        self.writeonfilebytes(file_out, outs)
+        self.writeonfilebytes(file_err, errs)
+        proc.wait()
+        if proc.poll() is not None:
+            if debug:
                 print("PID {PID} done.".format(PID=proc.pid))
-                self.PID_CONTROL.remove(proc.pid)
+            self.PID_CONTROL.remove(proc.pid)
         return None
 
     @staticmethod
@@ -288,16 +271,67 @@ class BkpNasSeg:
         return fst_lines
 
 
+def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False):
+    """
+    Prepare the backup command
+    :param command: base command to be executed i.e: /usr/bin/dsmc
+    :param param_sub:
+    :param param_target:
+    :param optfile:
+    :param sudo:
+    :param debug:
+    :return: string cmd
+    """
+    cmd = []
+    if sudo:
+        cmd.extend(["sudo"])
+    cmd.extend([command])
+    cmd.extend(["i"])
+    cmd.extend(["-quiet"])
+    cmd.extend(["-optfile=" + optfile])
+    cmd.extend([param_sub])
+    cmd.extend([param_target])
+    if debug:
+        print(cmd)
+    return cmd
+
+
+def split_target_str(target_str, debug=False):
+    """
+    Slipt string with target directory into parm_dir and param_sub
+    :param target_str:
+    :param debug:
+    :return: tuple param_sub, param_target
+    """
+    param_sub = ""
+    param_target = ""
+    try:
+        # separa param '-sub=yes' do caminho alvo
+        param_sub, param_target = target_str.split(' ', 1)
+        if debug:
+            print('"' + param_target + '"')
+    except ValueError:
+        print("Error: not enough values to unpack")
+        print(target_str)
+        exit(-1)
+    return param_sub, param_target
+
+
 def generate_config_file(config_file):
-    """TODO"""
+    """
+
+    :param config_file:
+    :return:
+    """
     config_content = '{\n' \
                      '"PROCS": 30,\n' \
                      '"LEVEL_THRESHOLD": 3,\n' \
                      '"LEVEL_MAXLIMIT": 5,\n' \
                      '"BASE_DIR": "/home",\n' \
-                     '"NODENAME": "TESTE_CUNHA",\n' \
+                     '"NODENAME": ["TESTE_CUNHA"],\n' \
                      '"OPTFILE": "/opt/tivoli/tsm/client/ba/bin/dsm.opt",\n' \
                      '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
+                     '"TSM_LOG_DIR": "/opt/tivoli/tsm/client/ba/bin/logs",\n' \
                      '"TMP_DIR": "/tmp/tsm_seg_bkp/",\n' \
                      '"DSMC": "/usr/bin/dsmc"\n' \
                      '}'
@@ -311,17 +345,23 @@ def main(config_file):
     :return:
     """
     bkp = BkpNasSeg(config_file)
-    if not bkp.testlevel:
-        print("Programa terminado.")
-        exit(-1)
-    bkp.generatetextfile()
+    if not bkp.testlevel(bkp.LEVEL_THRESHOLD, bkp.LEVEL_MAXLIMIT):
+        msg = "Nível máximo de segmentação devem estar entre um (1) e cinco (5).\n"
+        msg += "Valor de corte para ativar backup em subniveis deve não ser maior que o nível máximo.\n"
+        msg += "Programa terminado."
+        print(msg)
+        exit(1)
+    start_listing = time.time()
+    print("Listing directories started at {start}".format(start=start_listing))
+    bkp.generatetextfile(bkp.BASE_DIR, bkp.LEVEL_MAXLIMIT)
+    print("Elapsed Time while listing directories: %s" % (time.time() - start_listing))
     linhas = bkp.file_len(bkp.FILENODE)
-    print("Initial quatity of files to be copied: {linhas}".format(linhas=linhas))
+    print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
     threads = 0
     # enquanto tiver arquivos a serem copiados
+    os.chdir(bkp.TSM_DIR)
     while True:
-        # ate 10 threads
-        if bkp.PID_CONTROL.__len__().__lt__(10):
+        if bkp.PID_CONTROL.__len__().__lt__(bkp.PROCS) and linhas > 0:
             try:
                 # bkp.dsmcdecrementa()
                 _thread.start_new_thread(bkp.dsmcdecrementa, ())
@@ -333,14 +373,13 @@ def main(config_file):
                 if bkp.debug:
                     print("thread " + str(threads))
                     print("Files to be copied: {linhas}".format(linhas=linhas))
-                time.sleep(0.1)
-                for pid in bkp.PID_CONTROL:
-                    if bkp.debug:
+                    for pid in bkp.PID_CONTROL:
                         print(str(pid))
-                if bkp.debug:
                     print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
-        if (not bkp.PID_CONTROL) and linhas == 0:
-            break
+                time.sleep(0.8)
+            if (not bkp.PID_CONTROL) and linhas == 0:
+                break
+    print("Program sucessfully executed.")
     return 0
 
 
@@ -348,6 +387,7 @@ if __name__ == "__main__":
     import sys
     import os.path
     conf_file = ''
+    start = time.time()
     try:
         conf_file = sys.argv[1]
     except IndexError as ie:
@@ -370,3 +410,4 @@ if __name__ == "__main__":
         print(str(fnfe))
         print("File not found. Please inform a existent path.")
         exit(1)
+    print("Elapsed Time: {time}".format(time=(time.time() - start)))
