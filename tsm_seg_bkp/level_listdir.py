@@ -56,7 +56,9 @@ class LevelListDir:
                 if lvl.__eq__(0):
                     dir_list.extend([self.BASE_DIR+'\n'])
                     for line in dir_list:
-                        for path in get_path_content(line[:line.find('\n')]):
+                        line_ = line[:line.find('\n')]
+                        print(line_)
+                        for path in timeout(get_path_content, (line_,), timeout_duration=30000000, default=line_):
                             if not path:
                                 print("empty")
                             else:
@@ -65,15 +67,16 @@ class LevelListDir:
                     if isfile(self._FILELEVEL_LIST[lvl - 1]):
                         with open(self._FILELEVEL_LIST[lvl - 1], mode="r") as former_file_lvl:
                             for line in former_file_lvl:
-                                # dir_list.append(line)
-                                for path in get_path_content(line[:line.find('\n')]):
+                                line_ = line[:line.find('\n')]
+                                print(line_)
+                                for path in timeout(get_path_content, (line_,), timeout_duration=30000000, default=line_):
                                     if not path:
                                         print("empty")
                                     else:
                                         print(path)
                                         self.__path_str_2_file_level(file_lvl, path)
                     else:
-                        print("file does not exists.")
+                        print("Reached the deepest level.")
                         self._FILELEVEL_LIST.pop(lvl - 1)
                         break
                 self._FILELEVEL_LIST.append(file_lvl)
@@ -83,6 +86,25 @@ class LevelListDir:
         for filename in self._FILELEVEL_LIST:
             result.append(join(self.TMP_DIR.name, filename))
         return result
+
+
+def timeout(func, args=(), kwargs={}, timeout_duration=3600, default=None):
+    import signal
+
+    def handler(signum, frame):
+        raise TimeoutError()
+
+    # set the timeout handler
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(timeout_duration)
+    try:
+        result = func(*args, **kwargs)
+    except TimeoutError:
+        result = default
+    finally:
+        signal.alarm(0)
+
+    return result
 
 
 def get_path_content(directory):

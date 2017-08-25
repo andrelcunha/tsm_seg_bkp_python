@@ -3,15 +3,16 @@
 """
 Executes a segmented backup from target path, setup in BASE_DIR attribute.
 """
-
-import _thread
 import errno
 import json
+# import _thread
+import multiprocessing
 import os
 import os.path
 import time
 from subprocess import Popen, PIPE
 from tempfile import TemporaryFile
+
 import tsm_seg_bkp.level_listdir
 
 
@@ -32,17 +33,23 @@ class BkpNasSeg:
         self.TMP_DIR = ""
         self.DSMC = ""
         self.TXT_DIR = ""
-        self.NOMEDIR = ""
+        # self.NOMEDIR = ""
         self.FILENODE = ""
         self.TSMSCHEDLOG = ""
         self.TSMERRORLOG = ""
         self.PID_CONTROL = []
+        self.VERBOSE = False
         self.debug = True
         self.sudo = False
         self.set_configuration(self.get_configuration(config_file))
-        self.NOMEDIR = self.BASE_DIR.replace("/", "")
+        self.TIMESTAMP = create_timestamp()
+        if self.VERBOSE == "True":
+            self.VERBOSE = True
+        else:
+            self.VERBOSE = False
+        # self.NOMEDIR = self.BASE_DIR.replace("/", "")
         self.TXT_DIR = os.path.join(self.TSM_DIR, "TXT")
-        self.FILENODE = os.path.join(self.TXT_DIR, self.NODENAME + "-" + self.NOMEDIR + ".txt")
+        self.FILENODE = os.path.join(self.TXT_DIR, self.NODENAME + "-" + self.TIMESTAMP + ".txt")
         self.TSMSCHEDLOG = os.path.join(self.TSM_LOG_DIR, "dsmsched-" + self.NODENAME + ".log")
         self.TSMERRORLOG = os.path.join(self.TSM_LOG_DIR, "dsmerror-" + self.NODENAME + ".log")
         self.PID_CONTROL = []
@@ -137,7 +144,7 @@ class BkpNasSeg:
         :return: flag_ok: Boolean"""
         return (0 < level_max < 6) and (level_threshold <= level_max) and (level_threshold > 0)
 
-    def generatetextfile(self, base_dir, level_maxlimit):
+    def generatetextfile(self, base_dir, level_maxlimit=1):
         """
         TODO:
         think about toggle
@@ -153,11 +160,12 @@ class BkpNasSeg:
         :return None
         """
         file_level_list = []
+        lld_list = []
         if type(base_dir) is str:
             base_dir = [base_dir]
-        for bdir in base_dir:
-            lld = tsm_seg_bkp.level_listdir.LevelListDir(bdir, level_maxlimit)
-            file_level_list.extend(lld.get_levellist())
+        for i,bdir in enumerate(base_dir):
+            lld_list.extend([tsm_seg_bkp.level_listdir.LevelListDir(bdir, level_maxlimit)])
+            file_level_list.extend(lld_list[i].get_levellist())
         for level in range(1, level_maxlimit + 1):
             if level.__le__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                 file_level = file_level_list[level - 1]
@@ -169,7 +177,7 @@ class BkpNasSeg:
                     # cmd = "sed 's/^/-sub=yes \"/' " + file_level + " >> " + self.FILENODE
                     cmd = "sed 's/^/-sub=yes /' " + file_level + " >> " + self.FILENODE
                     os.system(cmd)
-        file_list = self.TXT_DIR + "/" + self.NODENAME + "-" + self.NOMEDIR + "-LISTADIR.txt"
+        file_list = self.TXT_DIR + "/" + self.NODENAME + "-" + self.TIMESTAMP + "-LISTADIR.txt"
         cmd = "sed \"/.snapshot/d\" " + self.FILENODE + ">> " + file_list
         '''
         this statement can be replaced by str.replace(".snapshot","")
@@ -202,13 +210,14 @@ class BkpNasSeg:
         else:
             return 0
 
+    '''
     def dsmcdecrementa(self):
         """
         Executa backups incrementais em paralelo, para as primeiras $PROCS linhas do arquivo de diretórios.
         Depois exclui estas linhas da lista de diretórios, decrementando a váriavel de contabilização do número de linhas
         ($LINHAS).
         """
-        '''
+   
         command = self.DSMC
         file_out = self.TSMSCHEDLOG
         file_err = self.TSMERRORLOG
@@ -223,7 +232,7 @@ class BkpNasSeg:
         cmd = prepare_command(command, param_sub, param_target, optfile, sudo, debug)
         self.execute_command(cmd, file_out, file_err, debug)
         return None
-        '''
+    '''
 
     def execute_command(self, cmd, file_out, file_err, debug=False):
         """
@@ -271,23 +280,27 @@ class BkpNasSeg:
         return fst_lines
 
 
-def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False):
+def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False, verbose=False):
     """
     Prepare the backup command
-    :param command: base command to be executed i.e: /usr/bin/dsmc
-    :param param_sub:
-    :param param_target:
-    :param optfile:
-    :param sudo:
-    :param debug:
-    :return: string cmd
+    :param command: str base command to be executed i.e: /usr/bin/dsmc
+    :param param_sub: str(sub=yes)
+    :param param_target: str(path)
+    :param optfile: str (path)
+    :param sudo: Boolean
+    :param debug: Boolean
+    :param verbose: Boolean
+    :return: str
     """
     cmd = []
     if sudo:
         cmd.extend(["sudo"])
     cmd.extend([command])
     cmd.extend(["i"])
-    cmd.extend(["-quiet"])
+    if verbose:
+        cmd.extend(["-verbose"])
+    else:
+        cmd.extend(["-quiet"])
     cmd.extend(["-optfile=" + optfile])
     cmd.extend([param_sub])
     cmd.extend([param_target])
@@ -307,12 +320,14 @@ def split_target_str(target_str, debug=False):
     param_target = ""
     try:
         # separa param '-sub=yes' do caminho alvo
+        if debug:
+            print('"target_str:' + target_str + '"')
         param_sub, param_target = target_str.split(' ', 1)
         if debug:
             print('"' + param_target + '"')
-    except ValueError:
+    except ValueError as e:
         print("Error: not enough values to unpack")
-        print(target_str)
+        print(target_str, e)
         exit(-1)
     return param_sub, param_target
 
@@ -333,81 +348,112 @@ def generate_config_file(config_file):
                      '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
                      '"TSM_LOG_DIR": "/opt/tivoli/tsm/client/ba/bin/logs",\n' \
                      '"TMP_DIR": "/tmp/tsm_seg_bkp/",\n' \
-                     '"DSMC": "/usr/bin/dsmc"\n' \
+                     '"DSMC": "/usr/bin/dsmc",\n' \
+                     '"VERBOSE": True\n' \
                      '}'
     with open(config_file, mode="w") as cf:
         cf.write(config_content)
 
 
-def main(config_file):
-    """
-    Main
-    :return:
-    """
-    bkp = BkpNasSeg(config_file)
-    if not bkp.testlevel(bkp.LEVEL_THRESHOLD, bkp.LEVEL_MAXLIMIT):
-        msg = "Nível máximo de segmentação devem estar entre um (1) e cinco (5).\n"
-        msg += "Valor de corte para ativar backup em subniveis deve não ser maior que o nível máximo.\n"
-        msg += "Programa terminado."
-        print(msg)
-        exit(1)
-    start_listing = time.time()
-    print("Listing directories started at {start}".format(start=start_listing))
-    bkp.generatetextfile(bkp.BASE_DIR, bkp.LEVEL_MAXLIMIT)
-    print("Elapsed Time while listing directories: %s" % (time.time() - start_listing))
-    linhas = bkp.file_len(bkp.FILENODE)
-    print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
-    threads = 0
-    # enquanto tiver arquivos a serem copiados
-    os.chdir(bkp.TSM_DIR)
-    while True:
-        if bkp.PID_CONTROL.__len__().__lt__(bkp.PROCS) and linhas > 0:
-            try:
-                # bkp.dsmcdecrementa()
-                _thread.start_new_thread(bkp.dsmcdecrementa, ())
-                threads += 1
-            except RuntimeError:
-                print("Error: unable to start thread")
-            finally:
-                linhas = bkp.file_len(bkp.FILENODE)
-                if bkp.debug:
-                    print("thread " + str(threads))
-                    print("Files to be copied: {linhas}".format(linhas=linhas))
-                    for pid in bkp.PID_CONTROL:
-                        print(str(pid))
-                    print("Total ative processes: " + str(bkp.PID_CONTROL.__len__()))
-                time.sleep(0.8)
-            if (not bkp.PID_CONTROL) and linhas == 0:
-                break
-    print("Program sucessfully executed.")
-    return 0
+def humanize_time(secs):
+    days = int(secs // 86400)
+    hours = int(secs // 3600 % 24)
+    minutes = int(secs // 60 % 60)
+    seconds = int(secs % 60)
+    return days, hours, minutes, seconds
 
+def create_timestamp():
+    import datetime
+    return '{:%Y%m%d.%H%M%S}'.format(datetime.datetime.now())
 
 if __name__ == "__main__":
     import sys
     import os.path
-    conf_file = ''
-    start = time.time()
     try:
-        conf_file = sys.argv[1]
-    except IndexError as ie:
-        print(str(ie))
-        print("Missing arguments. Expecting 1, received {argv}.".format(argv=(len(sys.argv)-1)))
-        conf_file = "config.json"
-        if not os.path.isfile(conf_file):
-            print("Configuration file not found.\n")
-            generate_config_file(conf_file)
-            print("Configuration file example generated.")
-            print("Please, configure with your needs and try again.")
-            exit(0)
-        else:
-            print("Found configuration file.\n")
-    try:
-        if not os.path.isfile(conf_file):
-            raise FileNotFoundError
-        main(conf_file)
-    except FileNotFoundError as fnfe:
-        print(str(fnfe))
-        print("File not found. Please inform a existent path.")
+        conf_file = ''
+        start = time.time()
+        try:
+            conf_file = sys.argv[1]
+        except IndexError as ie:
+            print(str(ie))
+            print("Missing arguments. Expecting 1, received {argv}.".format(argv=(len(sys.argv)-1)))
+            conf_file = "config.json"
+            if not os.path.isfile(conf_file):
+                print("Configuration file not found.\n")
+                generate_config_file(conf_file)
+                print("Configuration file example generated.")
+                print("Please, configure with your needs and try again.")
+                exit(0)
+            else:
+                print("Found configuration file.\n")
+        try:
+            if not os.path.isfile(conf_file):
+                raise FileNotFoundError
+            bkp = BkpNasSeg(conf_file)
+            if not bkp.testlevel(bkp.LEVEL_THRESHOLD, bkp.LEVEL_MAXLIMIT):
+                msg = "Nível máximo de segmentação devem estar entre um (1) e cinco (5).\n"
+                msg += "Valor de corte para ativar backup em subniveis deve não ser maior que o nível máximo.\n"
+                msg += "Programa terminado."
+                print(msg)
+                exit(1)
+            start_listing = time.time()
+            print("Listing directories started at {start}".format(start=start_listing))
+            bkp.generatetextfile(bkp.BASE_DIR, bkp.LEVEL_MAXLIMIT)
+            delta = time.time() - start_listing
+            print("Elapsed Time while listing directories: {0} days, {1}h {2}m {3}s ".format(*humanize_time(delta)))
+            linhas = bkp.file_len(bkp.FILENODE)
+            print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
+            os.chdir(bkp.TSM_DIR)
+            command = bkp.DSMC
+            file_out = bkp.TSMSCHEDLOG
+            file_err = bkp.TSMERRORLOG
+            sudo_flag = bkp.sudo
+            debug_flag = bkp.debug
+            verbose_flag = bkp.VERBOSE
+            optfile = bkp.OPTFILE
+            while linhas > 0:
+                if multiprocessing.active_children().__len__().__lt__(bkp.PROCS):
+                    try:
+                        raw_line = bkp.pop_out_n_lines(bkp.FILENODE, 1)
+                        dir_target = raw_line.replace('\n', '/')
+                        # dir_target = raw_line.rstrip('\n')
+                        if bkp.debug:
+                            print(dir_target)
+                        param_sub, param_target = split_target_str(dir_target, debug_flag)
+                        cmd = prepare_command(command, param_sub, param_target, optfile, sudo_flag, debug_flag, verbose_flag)
+                        p = multiprocessing.Process(target=bkp.execute_command, args=(cmd, file_out, file_err))
+                        p.start()
+                    except RuntimeError:
+                        print("Error: unable to start subprocess")
+                    finally:
+                        linhas = bkp.file_len(bkp.FILENODE)
+                        if bkp.debug:
+                            active_processes = multiprocessing.active_children().__len__()
+                            if active_processes:
+                                last_process = multiprocessing.active_children()[active_processes-1]
+                                print("Process " + str(last_process.pid))
+                            print("Lines to be processed: {linhas}".format(linhas=linhas))
+                            for pid in bkp.PID_CONTROL:
+                                print(str(pid))
+                            print("Total ative processes: " + str(active_processes))
+                        time.sleep(0.5)
+            print("There is no more lines to be processed.")
+            while multiprocessing.active_children():
+                active_processes = multiprocessing.active_children().__len__()
+                print("Processes still working: {0}".format(active_processes))
+                time.sleep(60)
+            print("Program sucessfully executed.")
+        except FileNotFoundError as fnfe:
+            print(str(fnfe))
+            print("File not found. Please inform a existent path.")
+            exit(1)
+        print("Elapsed Time: {time}".format(time=(time.time() - start)))
+    except KeyboardInterrupt:
+        proc_list = multiprocessing.active_children()
+        active_processes = proc_list.__len__()
+        print("Processes still working: {0}".format(active_processes))
+        for proc in proc_list:
+            proc.terminate()
         exit(1)
-    print("Elapsed Time: {time}".format(time=(time.time() - start)))
+
+
