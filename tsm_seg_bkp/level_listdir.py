@@ -4,8 +4,8 @@
 list file based on level.
 """
 
-from os import chdir, scandir
-from os.path import join, isdir, isfile
+from os import chdir, scandir, mkdir
+from os.path import join, isdir, isfile, abspath
 from tempfile import TemporaryDirectory
 # from random import choice
 # from string import ascii_uppercase, digits
@@ -56,20 +56,22 @@ class LevelListDir:
                 if lvl.__eq__(0):
                     dir_list.extend([self.BASE_DIR+'\n'])
                     for line in dir_list:
-                        line_ = line[:line.find('\n')]
-                        print(line_)
-                        for path in timeout(get_path_content, (line_,), timeout_duration=30000000, default=line_):
+                        line = prepare_line(line)
+                        #print(line)
+                        # for path in timeout(get_path_content, (line,), timeout_duration=30000000, default=line):
+                        for path in get_path_content(line):
                             if not path:
                                 print("empty")
                             else:
+                                print(path)
                                 self.__path_str_2_file_level(file_lvl, path)
                 else:
                     if isfile(self._FILELEVEL_LIST[lvl - 1]):
                         with open(self._FILELEVEL_LIST[lvl - 1], mode="r") as former_file_lvl:
                             for line in former_file_lvl:
-                                line_ = line[:line.find('\n')]
-                                print(line_)
-                                for path in timeout(get_path_content, (line_,), timeout_duration=30000000, default=line_):
+                                line = prepare_line(line)
+                                #print(line)
+                                for path in get_path_content(line):
                                     if not path:
                                         print("empty")
                                     else:
@@ -86,6 +88,10 @@ class LevelListDir:
         for filename in self._FILELEVEL_LIST:
             result.append(join(self.TMP_DIR.name, filename))
         return result
+
+
+def prepare_line(line):
+    return line[:line.find('\n')]
 
 
 def timeout(func, args=(), kwargs={}, timeout_duration=3600, default=None):
@@ -135,20 +141,32 @@ def deal_bad_string(bad_string):
 if __name__ == '__main__':
     import sys
     import shutil
+    from tsm_seg_bkp.tools import create_timestamp
     parent_dir = ''
     level = 0
     try:
         parent_dir = sys.argv[1]
-        level = int(sys.argv[2])
+        try:
+            level = int(sys.argv[2])
+        except ValueError:
+            print('Invalid argument: Expecting integer, received char.')
+
     except IndexError as ie:
         print(str(ie))
         print("Missing arguments. Expecting 2, received {argv}.".format(argv=(len(sys.argv)-1)))
         exit(1)
     if not isdir(parent_dir):
         print("File not found.")
-    lld = LevelListDir(parent_dir, level)
+    lld = LevelListDir(abspath(parent_dir), level)
+    ts = create_timestamp()
+    dirname= "level_listdir_" + ts
+    tmp_dir = join("/tmp/", dirname)
+    mkdir(tmp_dir)
     for level, file in enumerate(lld.get_levellist()):
         level_file = "level_" + str(level)
-        shutil.copy2(join(parent_dir, file), join("/tmp/", level_file))
+        try:
+            shutil.copy2(join(parent_dir, file), join(tmp_dir, level_file))
+        except FileNotFoundError:
+            print("No more levels.")
     chdir("/")
     exit(0)
