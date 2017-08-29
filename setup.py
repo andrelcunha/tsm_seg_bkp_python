@@ -14,7 +14,7 @@ with open('LICENSE') as f:
 
 config = {
     'name': 'tsm_seg_bkp_python',
-    'version': '0.3.0',
+    'version': '0.4.0',
     'description': 'Tool to backup a path using TSM, in a segmented way.',
     'long_description': readme,
     'author': 'Andre Luis da Cunha',
