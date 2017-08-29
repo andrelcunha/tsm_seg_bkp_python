@@ -327,7 +327,7 @@ exit 0
             self.save_file(content, file_name)
             # create python_script
             content = self.generate_python_script()
-            file_name = self.generate_
+            file_name = 'bkp_seg_{0}.sh'.format(self.NODENAME)
             self.save_file(content, file_name)
             # create json
             self.create_all_json()
