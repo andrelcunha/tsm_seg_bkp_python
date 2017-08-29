@@ -301,11 +301,13 @@ exit 0
         return content
 
     def main(self):
+        from os.path import isdir
         if self.create_node_dir():
             # create node dir
             chdir(self.NODE_FULL_DIR)
             # create logdir
-            mkdir(self.LOGDIR)
+            if not isdir(self.LOGDIR):
+                mkdir(self.LOGDIR)
             # create adsm
             content = self.generate_adsm_script()
             file_name = 'adsm-' + self.NODENAME + '.sh'
