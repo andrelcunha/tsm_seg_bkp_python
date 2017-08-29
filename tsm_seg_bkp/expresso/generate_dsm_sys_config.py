@@ -20,6 +20,7 @@ class GenerateDsmSysConfig:
         self.CONFIG_DICT = OrderedDict([('SERVERNAME', nodename),
                                         ('NodeName', nodename),
                                         ('CommMethod', 'tcpip'),
+                                        ('tcpserveraddr', '10.15.68.250'),
                                         ('TcpPort', '1500'),
                                         ('PasswordAccess', 'generate'),
                                         ('tcpbuffsize', '512'),
@@ -219,7 +220,7 @@ then
 fi
 
 exit 0
-'''.format(nodename=self.NODENAME.upper(), optfile=optfile,logdir=self.LOGDIR )
+'''.format(nodename=self.NODENAME.upper(), optfile=optfile, logdir=self.LOGDIR )
         return content
 
     def create_node_dir(self):
@@ -305,8 +306,8 @@ exit 0
 
     def deploy_dsm_sys(self, filename):
         content = '#!/bin/bash\n'
-        content += 'ORIGIN_FILE = "{0}"\n'.format(filename)
-        content += 'TARGET_FILE = "{0}"\n\n'.format(join(self.BINDIR, 'dsm.sys'))
+        content += 'ORIGIN_FILE="{0}"\n'.format(filename)
+        content += 'TARGET_FILE="{0}"\n\n'.format(join(self.BINDIR, 'dsm.sys'))
         content += 'cat $ORIGIN_FILE >> $TARGET_FILE\n'
         content += '\n'
         return content
