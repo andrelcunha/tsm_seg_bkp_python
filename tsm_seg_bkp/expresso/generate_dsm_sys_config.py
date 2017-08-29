@@ -149,13 +149,12 @@ class GenerateDsmSysConfig:
         content = ''
         for key in keys:
             if key == 'servername':
-                content = key.upper() + self.space_tab(keys[0]) + self.generate_servername(letter)
+                content = key.upper() + self.space_tab(keys[0]) + self.generate_servername(letter) + '\n'
             else:
-                content += key.upper() + self.space_tab(keys[1]) + 'yes'
+                content += key.upper() + self.space_tab(keys[1]) + 'yes' + '\n'
         return content
 
     def generate_opt_filename(self, letter):
-        """TODO"""
         name = 'dsm-' + self.NODENAME + '-' + letter.upper() + '.opt'
         return name
 
@@ -243,7 +242,7 @@ exit 0
 
     def generate_json_name(self, letter):
         file_name = 'config_' + self.NODENAME
-        file_name += '-' + letter + '.json'
+        file_name += '-' + letter.upper() + '.json'
         return file_name
 
     def create_all_json(self):
@@ -253,6 +252,12 @@ exit 0
             file_name = join(self.NODE_FULL_DIR, file_name)
             content = self.generate_json_content(letter)
             self.save_file(content, file_name)
+            if letter == 's':
+                letter = 'stage.'
+                file_name = self.generate_json_name(letter)
+                file_name = join(self.NODE_FULL_DIR, file_name)
+                content = self.generate_json_content(letter)
+                self.save_file(content, file_name)
         return 0
 
     def generate_presch_content(self):
