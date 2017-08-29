@@ -218,7 +218,6 @@ exit 0
 
     def create_node_dir(self):
         try:
-            chdir(self.NODESBASEDIR)
             mkdir(self.NODE_FULL_DIR)
             return True
         except Exception as e:
