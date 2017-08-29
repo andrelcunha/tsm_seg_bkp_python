@@ -171,12 +171,12 @@ class GenerateDsmSysConfig:
     def generate_python_script(self):
         content = "#!/bin/sh\n"
         content += "DTHR=\"`date +%y%m%d.%H%M%S`\"\n\n"
-        content += 'LOGDIR="{0}"'.format(self.LOGDIR)
+        content += 'LOGDIR="{0}"'.format(self.LOGDIR) + '\n'
         s = str(string.ascii_lowercase)
         s = 'z' + s[:-1]
         for letter in s:
             content += "python3 " + join(self.NODE_FULL_DIR, self.generate_letter_config_name(letter))
-            content += " > bkp_nas_seg.$DTHR.log\n"
+            content += " > $LOGDIR/bkp_nas_seg.$DTHR.log\n"
             if letter == 's':
                 content += "python3 " + join(self.NODE_FULL_DIR, self.generate_letter_config_name('stage.'))
                 content += " > bkp_nas_seg.$DTHR.log\n"
