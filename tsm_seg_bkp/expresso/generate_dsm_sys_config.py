@@ -12,7 +12,7 @@ class GenerateDsmSysConfig:
         self.NODESBASEDIR = "NODES"             # path where all node dirs are placed -- Will be changed to 'NODES'
         self.BINDIR = '/usr/tivoli/tsm/client/ba/bin64'
         self.NODE_FULL_DIR = join(self.BINDIR, self.NODESBASEDIR, self.NODENAME)
-        self.LOGDIR = join(self.NODE_FULL_DIR, 'logs')
+        self.LOGDIR = '/restore/DIOPE/expresso/logs'
         self.MAIL_DIR = 'cyrus/mail'
         self.BASE_DIR = base_dir                   # path to be copied
         self.BKP_NAS_SEG_PATH = '/opt/tsm_seg_bkp_python/tsm_seg_bkp/bkp_nas_seg.py'
@@ -171,6 +171,7 @@ class GenerateDsmSysConfig:
     def generate_python_script(self):
         content = "#!/bin/sh\n"
         content += "DTHR=\"`date +%y%m%d.%H%M%S`\"\n\n"
+        content += 'LOGDIR="{0}"'.format(self.LOGDIR)
         s = str(string.ascii_lowercase)
         s = 'z' + s[:-1]
         for letter in s:
@@ -195,7 +196,7 @@ class GenerateDsmSysConfig:
 #
 
 SERVER="{nodename}"
-LOGDIR="/restore/DIOPE/expresso/logs"
+LOGDIR="{logdir}"
 status1=`ps -ef | grep $SERVER | grep -v grep`
 
 if [ "$status1" = "" ]
@@ -213,7 +214,7 @@ then
 fi
 
 exit 0
-'''.format(nodename=self.NODENAME.upper(), optfile=optfile)
+'''.format(nodename=self.NODENAME.upper(), optfile=optfile,logdir=self.LOGDIR )
         return content
 
     def create_node_dir(self):
