@@ -165,6 +165,12 @@ class GenerateDsmSysConfig:
             file_name = join(self.NODE_FULL_DIR, file_name)
             content = self.generate_opt_file_content(letter)
             self.save_file(content, file_name)
+            if letter == 's':
+                letter = 'stage.'
+                file_name = self.generate_opt_filename(letter)
+                file_name = join(self.NODE_FULL_DIR, file_name)
+                content = self.generate_opt_file_content(letter)
+                self.save_file(content, file_name)
         return None
 
     def generate_python_script(self):
@@ -324,7 +330,8 @@ exit 0
             file_name = 'dsm-' + self.NODENAME + '.sys.local'
             self.save_file(content, join(self.NODE_FULL_DIR, file_name))
             # create script to deploy sysfile
-
+            content = self.deploy_dsm_sys(file_name)
+            self.save_file(content, 'apply_dsm_sys_patch.sh')
             # create pre
             content = self.generate_presch_content()
             file_name = self.generate_presch_filename()
