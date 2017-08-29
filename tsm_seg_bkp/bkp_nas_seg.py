@@ -3,17 +3,16 @@
 """
 Executes a segmented backup from target path, setup in BASE_DIR attribute.
 """
-import errno
 import json
 # import _thread
 import multiprocessing
 import os
 import os.path
 import time
-from subprocess import Popen, PIPE
 from tempfile import TemporaryFile
 
 import tsm_seg_bkp.level_listdir
+import tsm_seg_bkp.tools
 
 
 class BkpNasSeg:
@@ -22,6 +21,7 @@ class BkpNasSeg:
     """
 
     def __init__(self, config_file):
+        from tsm_seg_bkp.tools import create_timestamp, make_sure_path_exists, make_sure_file_exists
         self.PROCS = 0
         self.LEVEL_THRESHOLD = 0
         self.LEVEL_MAXLIMIT = 0
@@ -53,8 +53,8 @@ class BkpNasSeg:
         self.TSMSCHEDLOG = os.path.join(self.TSM_LOG_DIR, "dsmsched-" + self.NODENAME + ".log")
         self.TSMERRORLOG = os.path.join(self.TSM_LOG_DIR, "dsmerror-" + self.NODENAME + ".log")
         self.PID_CONTROL = []
-        self.make_sure_path_exists(self.TXT_DIR)
-        self.make_sure_file_exists(self.FILENODE)
+        make_sure_path_exists(self.TXT_DIR)
+        make_sure_file_exists(self.FILENODE)
         if self.debug:
             for attrib in dir(self):
                 print("{0}: {1}".format(attrib, getattr(self, attrib)))
@@ -84,56 +84,6 @@ class BkpNasSeg:
             if config.__contains__(attrib):
                 setattr(self, attrib, config[attrib])
 
-    @staticmethod
-    def make_sure_path_exists(path):
-        """
-        Verify if path exists and create it otherwise
-        :param: path: Path that will be checked.
-        :return: None
-        """
-        try:
-            os.makedirs(path)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
-        return None
-
-    @staticmethod
-    def make_sure_file_exists(file_name):
-        """
-        Verify if file exists and create it otherwise
-        :param: file_name: Name of file that will be checked.
-        :return: None
-        """
-        if os.path.isfile(file_name):
-            fn = open(file_name, mode="w")
-            fn.write('')
-            fn.close()
-        return None
-
-    @staticmethod
-    def writeonfile(file_name, message):
-        """
-        Write a message on file.
-        :param: file_name: Name of file that will receives the message.
-        :param: message: messege that will be appended into file.
-        """
-        my_file = open(file_name, mode="a+")
-        my_file.write(message)
-        my_file.close()
-        return None
-
-    @staticmethod
-    def writeonfilebytes(file_name, byte_content):
-        """
-        Write bytes on file.
-        :param: file_name: Name of file that will receives the message.
-        :param: message: messege that will be appended into file.
-        """
-        my_file = open(file_name, mode="ab")
-        my_file.write(byte_content)
-        my_file.close()
-        return None
 
     @staticmethod
     def testlevel(level_threshold, level_max):
@@ -191,25 +141,6 @@ class BkpNasSeg:
         os.chdir(self.TSM_DIR)
         return None
 
-    @staticmethod
-    def file_len(fname):
-        """
-        Get the number of lines of a file.
-        Retorna o numero de linhas de um arquivo
-        :param fname: Name of file (str)
-        :return: number of lines of fname
-        """
-
-        size = os.stat(fname).st_size
-        if size > 0:
-            with open(fname) as f:
-                i = 0
-                for i, l in enumerate(f):
-                    pass
-            return i + 1
-        else:
-            return 0
-
     '''
     def dsmcdecrementa(self):
         """
@@ -243,16 +174,19 @@ class BkpNasSeg:
         :param debug:
         :return:
         """
-        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-        self.PID_CONTROL.append(proc.pid)
-        outs, errs = proc.communicate()
-        self.writeonfilebytes(file_out, outs)
-        self.writeonfilebytes(file_err, errs)
-        proc.wait()
-        if proc.poll() is not None:
+        from subprocess import Popen, PIPE
+        from tsm_seg_bkp.tools import writeonfilebytes
+        
+        _proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+        self.PID_CONTROL.append(_proc.pid)
+        outs, errs = _proc.communicate()
+        writeonfilebytes(file_out, outs)
+        writeonfilebytes(file_err, errs)
+        _proc.wait()
+        if _proc.poll() is not None:
             if debug:
-                print("PID {PID} done.".format(PID=proc.pid))
-            self.PID_CONTROL.remove(proc.pid)
+                print("PID {PID} done.".format(PID=_proc.pid))
+            self.PID_CONTROL.remove(_proc.pid)
         return None
 
     @staticmethod
@@ -280,7 +214,7 @@ class BkpNasSeg:
         return fst_lines
 
 
-def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug=False, verbose=False):
+def prepare_command(raw_cmd, param_sub, param_target, optfile, sudo=False, debug=False, verbose=False):
     """
     Prepare the backup command
     :param command: str base command to be executed i.e: /usr/bin/dsmc
@@ -295,7 +229,7 @@ def prepare_command(command, param_sub, param_target, optfile, sudo=False, debug
     cmd = []
     if sudo:
         cmd.extend(["sudo"])
-    cmd.extend([command])
+    cmd.extend([raw_cmd])
     cmd.extend(["i"])
     if verbose:
         cmd.extend(["-verbose"])
@@ -354,21 +288,10 @@ def generate_config_file(config_file):
     with open(config_file, mode="w") as cf:
         cf.write(config_content)
 
-
-def humanize_time(secs):
-    days = int(secs // 86400)
-    hours = int(secs // 3600 % 24)
-    minutes = int(secs // 60 % 60)
-    seconds = int(secs % 60)
-    return days, hours, minutes, seconds
-
-def create_timestamp():
-    import datetime
-    return '{:%Y%m%d.%H%M%S}'.format(datetime.datetime.now())
-
 if __name__ == "__main__":
     import sys
     import os.path
+    from tsm_seg_bkp.tools import humanize_time, file_len
     try:
         conf_file = ''
         start = time.time()
@@ -401,7 +324,7 @@ if __name__ == "__main__":
             bkp.generatetextfile(bkp.BASE_DIR, bkp.LEVEL_MAXLIMIT)
             delta = time.time() - start_listing
             print("Elapsed Time while listing directories: {0} days, {1}h {2}m {3}s ".format(*humanize_time(delta)))
-            linhas = bkp.file_len(bkp.FILENODE)
+            linhas = file_len(bkp.FILENODE)
             print("Initial amount of files to be copied: {linhas}".format(linhas=linhas))
             os.chdir(bkp.TSM_DIR)
             command = bkp.DSMC
@@ -411,6 +334,7 @@ if __name__ == "__main__":
             debug_flag = bkp.debug
             verbose_flag = bkp.VERBOSE
             optfile = bkp.OPTFILE
+            counter = 0
             while linhas > 0:
                 if multiprocessing.active_children().__len__().__lt__(bkp.PROCS):
                     try:
@@ -426,7 +350,7 @@ if __name__ == "__main__":
                     except RuntimeError:
                         print("Error: unable to start subprocess")
                     finally:
-                        linhas = bkp.file_len(bkp.FILENODE)
+                        linhas = file_len(bkp.FILENODE)
                         if bkp.debug:
                             active_processes = multiprocessing.active_children().__len__()
                             if active_processes:
@@ -437,6 +361,13 @@ if __name__ == "__main__":
                                 print(str(pid))
                             print("Total ative processes: " + str(active_processes))
                         time.sleep(0.5)
+                if counter == 4:
+                    counter = 0
+                    print("\n")
+                    print("Heartbeat")
+                    print("\n")
+                else:
+                    counter += 1
             print("There is no more lines to be processed.")
             while multiprocessing.active_children():
                 active_processes = multiprocessing.active_children().__len__()
