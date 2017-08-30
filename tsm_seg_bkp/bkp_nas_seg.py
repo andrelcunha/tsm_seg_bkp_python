@@ -354,8 +354,11 @@ if __name__ == "__main__":
                         if bkp.debug:
                             active_processes = multiprocessing.active_children().__len__()
                             if active_processes:
-                                last_process = multiprocessing.active_children()[active_processes-1]
-                                print("Process " + str(last_process.pid))
+                                try:
+                                    last_process = multiprocessing.active_children()[active_processes-1]
+                                    print("Process " + str(last_process.pid))
+                                except IndexError as e:
+                                    print(e.__str__())
                             print("Lines to be processed: {linhas}".format(linhas=linhas))
                             for pid in bkp.PID_CONTROL:
                                 print(str(pid))
