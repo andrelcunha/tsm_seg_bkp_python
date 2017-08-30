@@ -36,7 +36,7 @@ class GenerateDsmSysConfig:
                                         ('resourceutilization', '10')])
 
     @staticmethod
-    def header_generator(_nodename):
+    def generate_header_sys(_nodename):
         header = ''
         for i in range(5):
             header += '*'
@@ -57,8 +57,6 @@ class GenerateDsmSysConfig:
         footer = '*' * 60 + '\n'
         return footer
 
-    def connection_config(self, letter):
-        pass
 
     def get_dict(self):
         return self.CONFIG_DICT
@@ -133,7 +131,7 @@ class GenerateDsmSysConfig:
 
     def generate_all_configs(self):
         """Creates dsm.sys content about this node"""
-        ac = ''
+        ac = self.generate_header_sys()
         for letter in string.ascii_lowercase:
             ac += self.generate_letter_config(letter)
             if letter == 's':
