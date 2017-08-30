@@ -12,11 +12,12 @@ class GenerateDsmSysConfig:
         self.NODESBASEDIR = "NODES"             # path where all node dirs are placed -- Will be changed to 'NODES'
         self.BINDIR = '/usr/tivoli/tsm/client/ba/bin64'
         self.NODE_FULL_DIR = join(self.BINDIR, self.NODESBASEDIR, self.NODENAME)
-        self.LOGDIR = '/restore/DIOPE/expresso/logs'
+        self.LOGDIR = join(self.NODE_FULL_DIR, 'logs')
         self.MAIL_DIR = 'cyrus/mail'
         self.BASE_DIR = base_dir                   # path to be copied
         self.BKP_NAS_SEG_PATH = '/opt/tsm_seg_bkp_python/tsm_seg_bkp/bkp_nas_seg.py'
         self.MAIL_FULL_DIR = join(self.BASE_DIR, self.MAIL_DIR)
+        self.PYTHON_SCRIPT = join('/opt', 'tsm_seg_bkp_python', 'tsm_seg_bkp', 'bkp_nas_seg.py')
         self.CONFIG_DICT = OrderedDict([('SERVERNAME', nodename),
                                         ('NodeName', nodename),
                                         ('CommMethod', 'tcpip'),
@@ -33,7 +34,8 @@ class GenerateDsmSysConfig:
                                         ('CommRestartD', '120'),
                                         ('CommRestartI', '300'),
                                         ('Schedmode', 'PRompted'),
-                                        ('resourceutilization', '10')])
+                                        ('resourceutilization', '10'),
+                                        ('*managedservices', 'schedule')])
 
     @staticmethod
     def generate_header_sys(_nodename):
@@ -56,7 +58,6 @@ class GenerateDsmSysConfig:
     def generate_session_footer():
         footer = '*' * 60 + '\n'
         return footer
-
 
     def get_dict(self):
         return self.CONFIG_DICT
@@ -113,7 +114,7 @@ class GenerateDsmSysConfig:
         vm += self.generate_letter_path(letter) + '\n'
         return vm
 
-    def generate_letter_config_name(self, letter):
+    def generate_letter_json_name(self, letter):
         name = "config_"
         name += self.NODENAME
         name += "-" + letter.upper() + ".json"
@@ -174,16 +175,22 @@ class GenerateDsmSysConfig:
 
     def generate_python_script(self):
         content = "#!/bin/sh\n"
-        content += "DTHR=\"`date +%y%m%d.%H%M%S`\"\n\n"
-        content += 'LOGDIR="{0}"'.format(self.LOGDIR) + '\n'
+        content += "DTHR=\"`date +%y%m%d.%H%M%S`\"\n"
+        content += 'PYTHON_SCRIPT={0}\n'.format(self.PYTHON_SCRIPT)
+        content += 'LOGDIR="{0}"'.format(self.LOGDIR) + '\n\n'
         s = str(string.ascii_lowercase)
         s = 'z' + s[:-1]
         for letter in s:
-            content += "python3 " + join(self.NODE_FULL_DIR, self.generate_letter_config_name(letter))
+            content += 'python3 '
+            content += '$PYTHON_SCRIPT '
+            content += join(self.NODE_FULL_DIR, self.generate_letter_json_name(letter))
             content += " > $LOGDIR/bkp_nas_seg.$DTHR.log\n"
             if letter == 's':
-                content += "python3 " + join(self.NODE_FULL_DIR, self.generate_letter_config_name('stage.'))
-                content += " > bkp_nas_seg.$DTHR.log\n"
+                letter = 'stage.'
+                content += 'python3 '
+                content += '$PYTHON_SCRIPT '
+                content += join(self.NODE_FULL_DIR, self.generate_letter_json_name(letter))
+                content += " > $LOGDIR/bkp_nas_seg.$DTHR.log\n"
         return content
 
     def save_file(self, content, file_name):
@@ -241,7 +248,7 @@ exit 0
         content += '"TSM_LOG_DIR": "{0}",\n'.format(self.LOGDIR)
         content += '"TMP_DIR": "{0}",\n'.format('/tmp/tsm_seg_bkp/')
         content += '"DSMC": "{0}",\n'.format('/usr/bin/dsmc')
-        content += '"VERBOSE": False\n'
+        content += '"VERBOSE": "False"\n'
         content += '}'
         return content
 
