@@ -131,7 +131,7 @@ class GenerateDsmSysConfig:
 
     def generate_all_configs(self):
         """Creates dsm.sys content about this node"""
-        ac = self.generate_header_sys()
+        ac = self.generate_header_sys(self.NODENAME)
         for letter in string.ascii_lowercase:
             ac += self.generate_letter_config(letter)
             if letter == 's':
