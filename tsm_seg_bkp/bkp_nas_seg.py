@@ -4,7 +4,6 @@
 Executes a segmented backup from target path, setup in BASE_DIR attribute.
 """
 import json
-# import _thread
 import multiprocessing
 import os
 import os.path
@@ -47,8 +46,12 @@ class BkpNasSeg:
             self.VERBOSE = True
         else:
             self.VERBOSE = False
+        if self.debug == "False":
+            self.debug = False
+        else:
+            self.debug = True
         # self.NOMEDIR = self.BASE_DIR.replace("/", "")
-        self.TXT_DIR = os.path.join(self.TSM_DIR, "TXT")
+        self.TXT_DIR = os.path.join(os.path.split(os.path.realpath(config_file))[0], 'TXT')
         self.FILENODE = os.path.join(self.TXT_DIR, self.NODENAME + "-" + self.TIMESTAMP + ".txt")
         self.TSMSCHEDLOG = os.path.join(self.TSM_LOG_DIR, "dsmsched-" + self.NODENAME + ".log")
         self.TSMERRORLOG = os.path.join(self.TSM_LOG_DIR, "dsmerror-" + self.NODENAME + ".log")
@@ -110,12 +113,16 @@ class BkpNasSeg:
         :return None
         """
         file_level_list = []
+        '''
         lld_list = []
         if type(base_dir) is str:
             base_dir = [base_dir]
-        for i,bdir in enumerate(base_dir):
+        for i, bdir in enumerate(base_dir):
             lld_list.extend([tsm_seg_bkp.level_listdir.LevelListDir(bdir, level_maxlimit)])
             file_level_list.extend(lld_list[i].get_levellist())
+        '''
+        lld = tsm_seg_bkp.level_listdir.LevelListDir(base_dir, level_maxlimit)
+        file_level_list.extend(lld.get_levellist())
         for level in range(1, level_maxlimit + 1):
             if level.__le__(level_maxlimit):  # it was self.LEVEL_THRESHOLD
                 file_level = file_level_list[level - 1]
@@ -262,7 +269,7 @@ def split_target_str(target_str, debug=False):
     except ValueError as e:
         print("Error: not enough values to unpack")
         print(target_str, e)
-        exit(-1)
+        exit(1)
     return param_sub, param_target
 
 
@@ -276,14 +283,14 @@ def generate_config_file(config_file):
                      '"PROCS": 30,\n' \
                      '"LEVEL_THRESHOLD": 3,\n' \
                      '"LEVEL_MAXLIMIT": 5,\n' \
-                     '"BASE_DIR": "/home",\n' \
-                     '"NODENAME": ["TESTE_CUNHA"],\n' \
+                     '"BASE_DIR": ["/home"],\n' \
+                     '"NODENAME": "TESTE_CUNHA",\n' \
                      '"OPTFILE": "/opt/tivoli/tsm/client/ba/bin/dsm.opt",\n' \
                      '"TSM_DIR": "/opt/tivoli/tsm/client/ba/bin",\n' \
                      '"TSM_LOG_DIR": "/opt/tivoli/tsm/client/ba/bin/logs",\n' \
                      '"TMP_DIR": "/tmp/tsm_seg_bkp/",\n' \
                      '"DSMC": "/usr/bin/dsmc",\n' \
-                     '"VERBOSE": True\n' \
+                     '"VERBOSE": "True"\n' \
                      '}'
     with open(config_file, mode="w") as cf:
         cf.write(config_content)
@@ -334,15 +341,14 @@ if __name__ == "__main__":
             debug_flag = bkp.debug
             verbose_flag = bkp.VERBOSE
             optfile = bkp.OPTFILE
-            counter = 0
             while linhas > 0:
                 if multiprocessing.active_children().__len__().__lt__(bkp.PROCS):
                     try:
                         raw_line = bkp.pop_out_n_lines(bkp.FILENODE, 1)
                         dir_target = raw_line.replace('\n', '/')
                         # dir_target = raw_line.rstrip('\n')
-                        if bkp.debug:
-                            print(dir_target)
+                        #if bkp.debug:
+                        print(dir_target)
                         param_sub, param_target = split_target_str(dir_target, debug_flag)
                         cmd = prepare_command(command, param_sub, param_target, optfile, sudo_flag, debug_flag, verbose_flag)
                         p = multiprocessing.Process(target=bkp.execute_command, args=(cmd, file_out, file_err))
@@ -364,19 +370,15 @@ if __name__ == "__main__":
                                 print(str(pid))
                             print("Total ative processes: " + str(active_processes))
                         time.sleep(0.5)
-                if counter == 4:
-                    counter = 0
-                    print("\n")
-                    print("Heartbeat")
-                    print("\n")
-                else:
-                    counter += 1
             print("There is no more lines to be processed.")
             while multiprocessing.active_children():
                 active_processes = multiprocessing.active_children().__len__()
                 print("Processes still working: {0}".format(active_processes))
                 time.sleep(60)
             print("Program sucessfully executed.")
+            if file_len(bkp.FILENODE) == 0:
+                os.remove(bkp.FILENODE)
+            exit(0)
         except FileNotFoundError as fnfe:
             print(str(fnfe))
             print("File not found. Please inform a existent path.")

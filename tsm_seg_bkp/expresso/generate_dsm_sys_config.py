@@ -83,6 +83,11 @@ class GenerateDsmSysConfig:
         fs_list = popen(cmd+opt_name+opt_path+grep_filter+awk_filter).read().splitlines()
         return fs_list
 
+    def get_initial_path_letter(self):
+        from os.path import split
+        path =self.BASE_DIR
+        return split(path[:2])[1]
+
     def generate_servername(self, letter):
         return self.NODENAME + '-' + letter.upper()
 
@@ -100,18 +105,20 @@ class GenerateDsmSysConfig:
         inclexcl_line += ' '*((80 - retention.__len__()) - inclexcl_line.__len__()) + retention + '\n'
         inclexcl += inclexcl_line
         excl_letters = string.ascii_lowercase.replace(letter, '')
+        inclexcl += 'EXCLUDE.DIR "' + join(self.MAIL_FULL_DIR, '[' + excl_letters + ']' + '*') + '"\n'
+        excl_letters = string.ascii_lowercase.replace(self.get_initial_path_letter(), '')
         inclexcl += 'EXCLUDE.DIR "/[' + excl_letters + ']*"\n'
         inclexcl += 'EXCLUDE.DIR /.../.snapshot\n'
         return inclexcl
 
     def generate_domain(self, letter):
-        do = 'Domain '
+        do = '\nDomain '
         do += self.generate_letter_path(letter) + '\n'
         return do
 
     def generate_virtualmountpoint(self, letter):
         vm = 'Virtualmountpoint '
-        vm += self.generate_letter_path(letter) + '\n'
+        vm += self.generate_letter_path(letter) + '\n\n'
         return vm
 
     def generate_letter_json_name(self, letter):
@@ -184,13 +191,13 @@ class GenerateDsmSysConfig:
             content += 'python3 '
             content += '$PYTHON_SCRIPT '
             content += join(self.NODE_FULL_DIR, self.generate_letter_json_name(letter))
-            content += " > $LOGDIR/bkp_nas_seg.$DTHR.log\n"
+            content += " >> $LOGDIR/bkp_nas_seg.$DTHR.log\n"
             if letter == 's':
                 letter = 'stage.'
                 content += 'python3 '
                 content += '$PYTHON_SCRIPT '
                 content += join(self.NODE_FULL_DIR, self.generate_letter_json_name(letter))
-                content += " > $LOGDIR/bkp_nas_seg.$DTHR.log\n"
+                content += " >> $LOGDIR/bkp_nas_seg.$DTHR.log\n"
         return content
 
     def save_file(self, content, file_name):
@@ -208,7 +215,7 @@ class GenerateDsmSysConfig:
 
 SERVER="{nodename}"
 LOGDIR="{logdir}"
-status1=`ps -ef | grep $SERVER | grep -v grep`
+status1=`ps -ef | grep $SERVER | grep -v grep |grep -v dsmcad`
 
 if [ "$status1" = "" ]
 then
