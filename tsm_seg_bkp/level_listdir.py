@@ -54,7 +54,11 @@ class LevelListDir:
                 dir_list = []
                 file_lvl = self.__generate_file_level_name(lvl)
                 if lvl.__eq__(0):
-                    dir_list.extend([self.BASE_DIR+'\n'])
+                    if type(self.BASE_DIR) is str:
+                        dir_list.extend([self.BASE_DIR + '\n'])
+                    else:
+                        for base_dir in self.BASE_DIR:
+                            dir_list.extend([base_dir + '\n'])
                     for line in dir_list:
                         line = prepare_line(line)
                         #print(line)
