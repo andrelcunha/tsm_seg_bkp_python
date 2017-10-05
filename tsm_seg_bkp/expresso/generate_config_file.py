@@ -6,7 +6,6 @@ TODO
 # import _thread
 import time
 
-
 def generate_config_file(file_name, nodename='__MYNODE__'):
     """
 
@@ -26,7 +25,7 @@ def generate_config_file(file_name, nodename='__MYNODE__'):
                      '"DSMC": "",\n' \
                      '"VERBOSE": False\n' \
                      '}'
-    variables={'nodename': nodename}
+    variables = {'nodename': nodename}
 
     with open(file_name, mode="w") as fn:
         fn.write(config_content.format_map(variables))

@@ -5,9 +5,18 @@ from os.path import join
 
 
 class GenerateDsmSysConfig:
-    CONFIG_DICT = None
+    '''
+    Permite criar todas os arquivos de configuração necessários para a implantação de um nó de backup do tipo EXPRESSO,
+    permitindo que o mesmo faça uso do backup segmentado.
+    '''
 
     def __init__(self, nodename, base_dir):
+        '''
+        Configurações iniciais da classe GenerateDsmSysConfig. Sem esses parâmetros, não é possível a execução.
+        Os parâmetros iniciais são os seguintes:
+        :param nodename: Nome do nó a ser implantado
+        :param base_dir: Diretório base dos dados que o nó deve armazenar.
+        '''
         self.NODENAME = nodename
         self.NODESBASEDIR = "NODES"             # path where all node dirs are placed -- Will be changed to 'NODES'
         self.BINDIR = '/usr/tivoli/tsm/client/ba/bin64'
@@ -39,6 +48,11 @@ class GenerateDsmSysConfig:
 
     @staticmethod
     def generate_header_sys(_nodename):
+        '''
+        Gera o cabeçalho inicial para o arquivo dsm.sys
+        :param _nodename: Nome do nó de backup.
+        :return: header - String contendo o cabeçalho gerado.
+        '''
         header = ''
         for i in range(5):
             header += '*'
